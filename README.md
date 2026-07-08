@@ -16,4 +16,4 @@ Ce projet constitue le socle backend (API) de l'application M-IA, développée p
 * **Outils :** Visual Studio Code, Git, SQL Server Management Studio (SSMS)
 
 ## Auteurs
-Projet réalisé par Hiba Karam en collaboration avec Chaimaa Amdaai, Anas Idrissi et Rizki Bekhich - Stagiaires @ M-AUTOMOTIV.
+Projet réalisé par Hiba Karam en collaboration avec Chaimaa Amdaai, Anas Idrissi et Rizki Bekhich - Stagiaires @ M&nbsp;AUTOMOTIV.
