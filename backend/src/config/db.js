@@ -1,14 +1,25 @@
-// backend/src/config/db.js
-const mysql = require('mysql2/promise');
+const sql = require('mssql');
+require('dotenv').config();
 
-const pool = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'm_ai_bd', // Assure-toi que le nom correspond à ce que tu as dans phpMyAdmin
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+const config = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_NAME,
+    options: {
+        encrypt: false,
+        enableArithAbort: true,
+        trustServerCertificate: true
+    }
+};
 
-module.exports = pool;
+const connectDB = async () => {
+    try {
+        await sql.connect(config);
+        console.log("Connexion à la base de données SQL Server réussie !");
+    } catch (err) {
+        console.error("Erreur de connexion SQL Server : ", err);
+    }
+};
+
+module.exports = { sql, connectDB };
