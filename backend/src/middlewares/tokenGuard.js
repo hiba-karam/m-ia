@@ -1,22 +1,38 @@
 const { sql } = require('../config/db');
+const PRICING_PER_1K_TOKENS = require('../config/pricing');
 
 const tokenGuard = async (req, res, next) => {
     const { userId, useCase, estimatedInputTokens, estimatedOutputTokens, provider } = req.body;
+    
+    // Si pas de userId pour M-support automate, on prend un utilisateur système ou un budget service
+    const uId = userId || 1; 
 
     try {
         const estimatedCost = calculateCost(estimatedInputTokens, estimatedOutputTokens, provider);
 
         const request = new sql.Request();
-        request.input('user_id', sql.Int, userId);
+        request.input('user_id', sql.Int, uId);
         
-        const result = await request.query(`
+        // 1. Obtenir les dépenses passées de l'utilisateur
+        const resultSpent = await request.query(`
             SELECT SUM(estimated_cost) as total_spent 
             FROM token_usage_logs 
             WHERE user_id = @user_id AND status = 'allowed'
         `);
+        const totalSpent = parseFloat(resultSpent.recordset[0].total_spent || 0);
+
+        // 2. Obtenir le budget de l'utilisateur via son rôle
+        const resultBudget = await request.query(`
+            SELECT tp.monthly_budget 
+            FROM users u
+            JOIN token_policies tp ON u.role_id = tp.role_id
+            WHERE u.id = @user_id
+        `);
         
-        const totalSpent = parseFloat(result.recordset[0].total_spent || 0);
-        const budgetLimit = 1000;
+        // Budget par défaut de sécurité si non trouvé
+        const budgetLimit = resultBudget.recordset.length > 0 && resultBudget.recordset[0].monthly_budget != null 
+                            ? parseFloat(resultBudget.recordset[0].monthly_budget) 
+                            : 50.0;
 
         if ((totalSpent + estimatedCost) >= budgetLimit) {
             await logDecision(userId, useCase, provider, 'blocked', estimatedCost);
@@ -39,7 +55,10 @@ const tokenGuard = async (req, res, next) => {
 };
 
 function calculateCost(input, output, provider) {
-    return 0.01;
+    const rates = PRICING_PER_1K_TOKENS[provider] || PRICING_PER_1K_TOKENS['ChatGPT'];
+    const inputCost = ((input || 0) / 1000) * rates.input;
+    const outputCost = ((output || 0) / 1000) * rates.output;
+    return inputCost + outputCost;
 }
 
 async function logDecision(userId, useCase, provider, status, cost) {

@@ -39,7 +39,16 @@ const processTicket = async (data) => {
         while (attempt < maxRetries && !success) {
             try {
                 attempt++;
-                externalTicketId = `EXT-TICKET-${Math.floor(Math.random() * 100000)}`;
+                // Appel réel vers l'API externe M-support
+                const apiResponse = await axios.post(MSUPPORT_API_URL, externalPayload, {
+                    headers: {
+                        'Authorization': `Bearer ${MSUPPORT_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 5000 // 5 secondes max
+                });
+
+                externalTicketId = apiResponse.data.ticket_id || `EXT-TICKET-${Math.floor(Math.random() * 100000)}`;
                 console.log(`[M-support API] Succès: Ticket créé dans l'outil externe (${externalTicketId}) à la tentative ${attempt}`);
                 success = true;
             } catch (error) {
