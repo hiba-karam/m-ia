@@ -1,4 +1,4 @@
-const { syncMailbox, listEmails, getEmailById } = require('./email.service');
+const { syncMailbox, listEmails, getEmailById } = require('./emailService');
 
 async function sync(req, res) {
     try {

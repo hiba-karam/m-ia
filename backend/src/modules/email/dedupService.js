@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { query } = require('../../config/db');
-const { hashBody } = require('../auth/auth.service');
+const { hashBody } = require('../auth/authService');
 
 async function isDuplicate(messageId, bodyHash) {
     const byMessageId = await query(
@@ -33,22 +33,19 @@ async function saveEmail(message, connectorType, mailbox) {
     const correlationId = crypto.randomUUID();
     const insertResult = await query(
         `INSERT INTO email_messages
-         (message_id, from_email, from_name, subject, body_preview, body_hash,
-          status, connector_type, mailbox, received_at, correlation_id)
+         (message_id, from_email, subject, body_hash,
+          status, connector_type, mailbox, received_at)
          OUTPUT INSERTED.id
-         VALUES (@messageId, @fromEmail, @fromName, @subject, @bodyPreview, @bodyHash,
-                 'new', @connectorType, @mailbox, @receivedAt, @correlationId)`,
+         VALUES (@messageId, @fromEmail, @subject, @bodyHash,
+                 'new', @connectorType, @mailbox, @receivedAt)`,
         {
             messageId: message.messageId,
             fromEmail: message.fromEmail,
-            fromName: message.fromName || null,
             subject: (message.subject || '').slice(0, 500),
-            bodyPreview: (message.bodyPreview || '').slice(0, 1000),
             bodyHash,
             connectorType,
             mailbox,
-            receivedAt: message.receivedAt,
-            correlationId,
+            receivedAt: message.receivedAt
         }
     );
 
@@ -57,13 +54,13 @@ async function saveEmail(message, connectorType, mailbox) {
     if (message.attachments?.length) {
         for (const attachment of message.attachments) {
             await query(
-                `INSERT INTO email_attachments (email_message_id, file_name, content_type, size_bytes)
-                 VALUES (@emailId, @fileName, @contentType, @sizeBytes)`,
+                `INSERT INTO email_attachments (email_message_id, file_name, content_type, file_size)
+                 VALUES (@emailId, @fileName, @contentType, @fileSize)`,
                 {
                     emailId,
                     fileName: attachment.fileName,
                     contentType: attachment.contentType || null,
-                    sizeBytes: attachment.sizeBytes || 0,
+                    fileSize: attachment.sizeBytes || 0,
                 }
             );
         }

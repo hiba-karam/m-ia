@@ -15,7 +15,7 @@ const callDeepSeek = async (provider, systemInstruction, prompt) => {
             { role: 'system', content: systemInstruction },
             { role: 'user', content: prompt }
         ],
-        response_format: { type: "json_object" } // DeepSeek supports JSON mode
+        response_format: { type: "json_object" } 
     }, {
         headers: { 'Authorization': `Bearer ${provider.key}` }
     });

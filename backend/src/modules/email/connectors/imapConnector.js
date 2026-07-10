@@ -1,6 +1,6 @@
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
-const emailConfig = require('../../../config/email.config');
+const emailConfig = require('../../../config/emailConfig');
 
 async function fetchUnreadMessages() {
     const { host, port, secure, user, password, mailbox } = emailConfig.imap;

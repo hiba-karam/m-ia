@@ -11,7 +11,7 @@ const callClaude = async (provider, systemInstruction, prompt) => {
 
     const response = await axios.post(provider.url, {
         model: 'claude-3-sonnet-20240229',
-        system: systemInstruction, // Anthropic gère le system prompt séparément
+        system: systemInstruction, 
         messages: [
             { role: 'user', content: prompt }
         ],

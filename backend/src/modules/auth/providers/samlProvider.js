@@ -1,5 +1,5 @@
 const { SAML } = require('@node-saml/node-saml');
-const authConfig = require('../../../config/auth.config');
+const authConfig = require('../../../config/authConfig');
 
 function createSamlInstance() {
     const { entryPoint, issuer, callbackUrl, cert, groupAttribute } = authConfig.saml;

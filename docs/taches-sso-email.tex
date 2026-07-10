@@ -59,8 +59,8 @@ Fichier & Rôle \\
 \midrule
 \texttt{database/001\_auth\_email\_schema.sql} & Tables \texttt{roles}, \texttt{users}, \texttt{sso\_group\_mappings}, \texttt{sessions} \\
 \texttt{database/002\_seed\_auth\_email.sql} & Rôles RBAC + exemples de mappings groupes SSO \\
-\texttt{backend/src/config/auth.config.js} & Configuration OIDC, SAML, LDAP, JWT, MFA \\
-\texttt{backend/src/modules/auth/auth.service.js} & Logique auth : sessions, tokens, mapping rôles \\
+\texttt{backend/src/config/authConfig.js} & Configuration OIDC, SAML, LDAP, JWT, MFA \\
+\texttt{backend/src/modules/auth/authService.js} & Logique auth : sessions, tokens, mapping rôles \\
 \texttt{backend/src/modules/auth/providers/oidc.provider.js} & Fournisseur OpenID Connect \\
 \texttt{backend/src/modules/auth/providers/saml.provider.js} & Fournisseur SAML \\
 \texttt{backend/src/modules/auth/providers/ldap.provider.js} & Fournisseur LDAP/AD \\
@@ -84,7 +84,7 @@ Fichier & Rôle \\
 
 \textbf{Pourquoi :} Conformément au BP (pages 7--9), M-IA doit tracer les accès et appliquer RBAC de façon persistante.
 
-\subsection{Partie 2 --- Configuration (\texttt{auth.config.js})}
+\subsection{Partie 2 --- Configuration (\texttt{authConfig.js})}
 
 \textbf{Explication :} Centralise toutes les variables d'environnement SSO.
 
@@ -142,7 +142,7 @@ Fichier & Rôle \\
   \item Script \texttt{scripts/create-admin.js} pour créer/mettre à jour l'admin sans mot de passe en dur dans le SQL.
 \end{itemize}
 
-\subsection{Partie 7 --- Mapping groupes SSO $\rightarrow$ rôles (\texttt{auth.service.js})}
+\subsection{Partie 7 --- Mapping groupes SSO $\rightarrow$ rôles (\texttt{authService.js})}
 
 \textbf{Explication :} Fonction \texttt{resolveRoleFromGroups(provider, groups)} :
 
@@ -205,11 +205,11 @@ Lire \textbf{uniquement} la boîte mail officielle de M-support, sans accès aux
 Fichier & Rôle \\
 \midrule
 \texttt{database/001\_auth\_email\_schema.sql} & Tables \texttt{email\_messages}, \texttt{email\_attachments} \\
-\texttt{backend/src/config/email.config.js} & Config Graph API / IMAP / règles sync \\
+\texttt{backend/src/config/emailConfig.js} & Config Graph API / IMAP / règles sync \\
 \texttt{backend/src/modules/email/connectors/graph.connector.js} & Connecteur Microsoft Graph \\
 \texttt{backend/src/modules/email/connectors/imap.connector.js} & Connecteur IMAP sécurisé \\
 \texttt{backend/src/modules/email/dedup.service.js} & Anti-doublon Message-ID + hash \\
-\texttt{backend/src/modules/email/email.service.js} & Orchestration sync \\
+\texttt{backend/src/modules/email/emailService.js} & Orchestration sync \\
 \texttt{backend/src/modules/email/email.controller.js} & Contrôleurs HTTP \\
 \texttt{backend/src/modules/email/email.routes.js} & Routes API \\
 \bottomrule
@@ -227,7 +227,7 @@ Fichier & Rôle \\
 
 \textbf{Anti-doublon (BP page 4)} : contrainte UNIQUE sur \texttt{message\_id} + recherche sur \texttt{body\_hash}.
 
-\subsection{Partie 2 --- Configuration (\texttt{email.config.js})}
+\subsection{Partie 2 --- Configuration (\texttt{emailConfig.js})}
 
 \textbf{Explication :}
 
@@ -277,7 +277,7 @@ Fichier & Rôle \\
 
 \textbf{Conformité BP :} ``Zéro doublon grâce au Message-ID email et à l'empreinte du contenu'' (page 3).
 
-\subsection{Partie 6 --- Orchestration sync (\texttt{email.service.js})}
+\subsection{Partie 6 --- Orchestration sync (\texttt{emailService.js})}
 
 \textbf{Explication :} Fonction \texttt{syncMailbox()} :
 

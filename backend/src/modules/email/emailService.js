@@ -1,7 +1,7 @@
-const emailConfig = require('../../config/email.config');
-const graphConnector = require('./connectors/graph.connector');
-const imapConnector = require('./connectors/imap.connector');
-const { saveEmail } = require('./dedup.service');
+const emailConfig = require('../../config/emailConfig');
+const graphConnector = require('./connectors/graphConnector');
+const imapConnector = require('./connectors/imapConnector');
+const { saveEmail } = require('./dedupService');
 const { query } = require('../../config/db');
 
 function getConnector() {
@@ -91,8 +91,8 @@ async function listEmails({ status, limit = 50 } = {}) {
     }
 
     const result = await query(
-        `SELECT TOP (@limit) id, message_id, from_email, from_name, subject, status,
-                connector_type, mailbox, received_at, correlation_id
+        `SELECT TOP (@limit) id, message_id, from_email, subject, status,
+                connector_type, mailbox, received_at
          FROM email_messages
          ${where}
          ORDER BY received_at DESC`,
@@ -105,7 +105,7 @@ async function listEmails({ status, limit = 50 } = {}) {
 async function getEmailById(id) {
     const result = await query(
         `SELECT e.*, (
-            SELECT file_name, content_type, size_bytes
+            SELECT file_name, content_type, file_size as size_bytes
             FROM email_attachments a WHERE a.email_message_id = e.id
             FOR JSON PATH
          ) AS attachments

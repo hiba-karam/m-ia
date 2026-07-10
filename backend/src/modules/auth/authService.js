@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../../config/db');
-const authConfig = require('../../config/auth.config');
+const authConfig = require('../../config/authConfig');
 
 function hashToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex');
@@ -14,7 +14,7 @@ function hashBody(content) {
 
 async function findUserByEmail(email) {
     const result = await query(
-        `SELECT u.id, u.email, u.display_name, u.password_hash, u.auth_source,
+        `SELECT u.id, u.email, u.name, u.password_hash, u.auth_source,
                 u.is_active, u.mfa_verified, r.name AS role_name, r.permissions
          FROM users u
          INNER JOIN roles r ON r.id = u.role_id
@@ -44,8 +44,7 @@ async function resolveRoleFromGroups(provider, groups = []) {
         `SELECT TOP 1 r.id, r.name, r.permissions, m.group_name
          FROM sso_group_mappings m
          INNER JOIN roles r ON r.id = m.role_id
-         WHERE m.is_active = 1
-           AND m.sso_provider = @provider
+         WHERE m.sso_provider = @provider
            AND m.group_name IN (${inClause})
          ORDER BY r.id ASC`,
         requestParams
@@ -64,9 +63,8 @@ async function upsertSsoUser({ email, displayName, authSource, roleId, mfaVerifi
     const existing = await findUserByEmail(email);
     if (existing) {
         await query(
-            `UPDATE users SET display_name = @displayName, role_id = @roleId,
+            `UPDATE users SET name = @displayName, role_id = @roleId,
                     auth_source = @authSource, mfa_verified = @mfaVerified,
-                    last_login_at = SYSUTCDATETIME(), updated_at = SYSUTCDATETIME(),
                     is_active = 1
              WHERE id = @id`,
             {
@@ -81,8 +79,8 @@ async function upsertSsoUser({ email, displayName, authSource, roleId, mfaVerifi
     }
 
     await query(
-        `INSERT INTO users (email, display_name, role_id, auth_source, mfa_verified, last_login_at)
-         VALUES (@email, @displayName, @roleId, @authSource, @mfaVerified, SYSUTCDATETIME())`,
+        `INSERT INTO users (email, name, role_id, auth_source, mfa_verified)
+         VALUES (@email, @displayName, @roleId, @authSource, @mfaVerified)`,
         {
             email,
             displayName,
@@ -100,10 +98,11 @@ async function createSession(userId, req) {
     expiresAt.setDate(expiresAt.getDate() + authConfig.refreshExpiresInDays);
 
     await query(
-        `INSERT INTO sessions (user_id, refresh_token_hash, ip_address, user_agent, expires_at)
-         VALUES (@userId, @hash, @ip, @ua, @expiresAt)`,
+        `INSERT INTO sessions (user_id, refresh_token, refresh_token_hash, ip_address, user_agent, expires_at)
+         VALUES (@userId, @token, @hash, @ip, @ua, @expiresAt)`,
         {
             userId,
+            token: refreshToken,
             hash: hashToken(refreshToken),
             ip: req.ip || null,
             ua: (req.headers['user-agent'] || '').slice(0, 500),
@@ -143,14 +142,9 @@ async function authenticateLocal(email, password) {
         throw new Error('Identifiants invalides.');
     }
 
-    if (authConfig.mfaRequiredForAdmin && user.role_name === 'Admin' && !user.mfa_verified) {
+    if (authConfig.mfaRequiredForAdmin && user.role_name === 'Admin M-IA' && !user.mfa_verified) {
         throw new Error('MFA requis pour le compte administrateur.');
     }
-
-    await query(
-        'UPDATE users SET last_login_at = SYSUTCDATETIME() WHERE id = @id',
-        { id: user.id }
-    );
 
     return user;
 }
@@ -166,7 +160,7 @@ async function buildAuthResponse(user, req) {
         user: {
             id: user.id,
             email: user.email,
-            displayName: user.display_name,
+            displayName: user.name,
             role: user.role_name,
             authSource: user.auth_source,
             permissions: JSON.parse(user.permissions || '[]'),

@@ -1,9 +1,8 @@
 module.exports = {
-    jwtSecret: process.env.JWT_SECRET || 'change-me-in-production',
+    jwtSecret: process.env.JWT_SECRET || 'a-changer-en-production',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
     refreshExpiresInDays: parseInt(process.env.REFRESH_EXPIRES_DAYS || '7', 10),
 
-    // Mode principal : oidc | saml | ldap | local
     authMode: (process.env.AUTH_MODE || 'local').toLowerCase(),
 
     localLoginEnabled: process.env.LOCAL_LOGIN_ENABLED !== 'false',

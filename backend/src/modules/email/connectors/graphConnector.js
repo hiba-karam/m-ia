@@ -1,7 +1,7 @@
 const { ClientSecretCredential } = require('@azure/identity');
 const { Client } = require('@microsoft/microsoft-graph-client');
 const { TokenCredentialAuthenticationProvider } = require('@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials');
-const emailConfig = require('../../../config/email.config');
+const emailConfig = require('../../../config/emailConfig');
 
 function createGraphClient() {
     const { tenantId, clientId, clientSecret } = emailConfig.graph;

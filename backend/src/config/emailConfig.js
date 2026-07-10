@@ -1,5 +1,4 @@
 module.exports = {
-    // graph | imap — une seule boîte officielle M-support
     connector: (process.env.EMAIL_CONNECTOR || 'graph').toLowerCase(),
     mailbox: process.env.MSUPPORT_MAILBOX,
 
@@ -7,7 +6,7 @@ module.exports = {
         tenantId: process.env.AZURE_TENANT_ID,
         clientId: process.env.AZURE_CLIENT_ID,
         clientSecret: process.env.AZURE_CLIENT_SECRET,
-        userId: process.env.MSUPPORT_GRAPH_USER_ID, // ID ou UPN de la boîte M-support
+        userId: process.env.MSUPPORT_GRAPH_USER_ID, 
     },
 
     imap: {

@@ -1,6 +1,6 @@
 const ldap = require('ldapjs');
-const authConfig = require('../../../config/auth.config');
-const { resolveRoleFromGroups, upsertSsoUser } = require('../auth.service');
+const authConfig = require('../../../config/authConfig');
+const { resolveRoleFromGroups, upsertSsoUser } = require('../authService');
 
 function createLdapClient() {
     const { url, bindDn, bindPassword } = authConfig.ldap;

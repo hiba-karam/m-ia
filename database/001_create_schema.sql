@@ -10,13 +10,16 @@ CREATE TABLE users (
     email NVARCHAR(255) NOT NULL UNIQUE,
     name NVARCHAR(255) NOT NULL,
     password_hash NVARCHAR(255),
-    is_active BIT DEFAULT 1
+    is_active BIT DEFAULT 1,
+    auth_source NVARCHAR(30) NOT NULL DEFAULT 'local', 
+    mfa_verified BIT NOT NULL DEFAULT 0,               
 );
 
 CREATE TABLE sso_group_mappings (
     id INT IDENTITY PRIMARY KEY,
     group_name NVARCHAR(255) NOT NULL,
-    role_id INT FOREIGN KEY REFERENCES roles(id)
+    role_id INT FOREIGN KEY REFERENCES roles(id),
+    sso_provider NVARCHAR(30) NOT NULL DEFAULT 'oidc', 
 );
 
 CREATE TABLE email_messages (
@@ -27,7 +30,9 @@ CREATE TABLE email_messages (
     body_hash VARBINARY(32) NOT NULL,
     status NVARCHAR(40) NOT NULL DEFAULT 'new',
     received_at DATETIME2 NOT NULL,
-    processed_at DATETIME2 NULL
+    processed_at DATETIME2 NULL,
+    connector_type NVARCHAR(20) NOT NULL DEFAULT 'graph', 
+    mailbox NVARCHAR(255) NOT NULL DEFAULT 'support@m-automotiv.com',
 );
 
 CREATE TABLE token_usage_logs (
@@ -82,6 +87,9 @@ CREATE TABLE sessions (
     id BIGINT IDENTITY PRIMARY KEY,
     user_id INT NOT NULL FOREIGN KEY REFERENCES users(id),
     refresh_token NVARCHAR(500) NOT NULL,
+    refresh_token_hash NVARCHAR(128) NULL, 
+    ip_address NVARCHAR(45) NULL,
+    user_agent NVARCHAR(500) NULL,
     expires_at DATETIME2 NOT NULL,
     revoked BIT DEFAULT 0,
     created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()

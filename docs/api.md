@@ -1,7 +1,8 @@
 # Documentation API REST
 
 ## Authentification
-Toute requête vers une route protégée doit inclure le header: Authorization: Bearer <token>.
+Toute requête vers une route protégée doit inclure un jeton d'accès (token).
+*Dans des outils comme Thunder Client ou Postman, il est recommandé d'aller dans l'onglet **Auth**, de choisir le type **Bearer Token** et d'y coller le token, plutôt que de l'écrire manuellement dans les Headers.*
 
 ## Endpoints Principaux
 

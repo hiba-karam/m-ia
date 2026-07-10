@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const tokenGuard = require('../../middlewares/tokenGuard');
-const verifyToken = require('../../middlewares/authMiddleware');
+const { verifyToken } = require('../../middlewares/authMiddleware');
 const { sql } = require('../../config/db');
 const SYSTEM_PROMPTS = require('../../config/prompts');
 const PRICING_PER_1K_TOKENS = require('../../config/pricing');
@@ -20,8 +20,6 @@ const PROVIDER_MAP = {
     'TECHNICAL': { name: 'DeepSeek', url: process.env.DEEPSEEK_API_URL, key: process.env.DEEPSEEK_API_KEY },
     'LONG_CONTEXT': { name: 'Kimi', url: process.env.KIMI_API_URL, key: process.env.KIMI_API_KEY }
 };
-
-
 
 const getProviderByUseCase = (useCase) => {
     switch (useCase) {

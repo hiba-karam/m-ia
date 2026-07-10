@@ -1,5 +1,5 @@
 const { Issuer, generators } = require('openid-client');
-const authConfig = require('../../../config/auth.config');
+const authConfig = require('../../../config/authConfig');
 
 let oidcClient = null;
 const pendingStates = new Map();

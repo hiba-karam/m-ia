@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const msupportController = require('./msupportController');
-const verifyToken = require('../../middlewares/authMiddleware');
+const { verifyToken } = require('../../middlewares/authMiddleware');
 
 router.post('/process', verifyToken, async (req, res) => {
     try {

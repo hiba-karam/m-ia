@@ -4,7 +4,6 @@ const PRICING_PER_1K_TOKENS = require('../config/pricing');
 const tokenGuard = async (req, res, next) => {
     const { userId, useCase, estimatedInputTokens, estimatedOutputTokens, provider } = req.body;
     
-    // Si pas de userId pour M-support automate, on prend un utilisateur système ou un budget service
     const uId = userId || 1; 
 
     try {
@@ -13,7 +12,6 @@ const tokenGuard = async (req, res, next) => {
         const request = new sql.Request();
         request.input('user_id', sql.Int, uId);
         
-        // 1. Obtenir les dépenses passées de l'utilisateur
         const resultSpent = await request.query(`
             SELECT SUM(estimated_cost) as total_spent 
             FROM token_usage_logs 
@@ -21,7 +19,6 @@ const tokenGuard = async (req, res, next) => {
         `);
         const totalSpent = parseFloat(resultSpent.recordset[0].total_spent || 0);
 
-        // 2. Obtenir le budget de l'utilisateur via son rôle
         const resultBudget = await request.query(`
             SELECT tp.monthly_budget 
             FROM users u
@@ -29,7 +26,6 @@ const tokenGuard = async (req, res, next) => {
             WHERE u.id = @user_id
         `);
         
-        // Budget par défaut de sécurité si non trouvé
         const budgetLimit = resultBudget.recordset.length > 0 && resultBudget.recordset[0].monthly_budget != null 
                             ? parseFloat(resultBudget.recordset[0].monthly_budget) 
                             : 50.0;

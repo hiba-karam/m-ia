@@ -14,7 +14,6 @@ const checkQuota = async (req, res) => {
         const request = new sql.Request();
         request.input('user_id', sql.Int, uId);
         
-        // Vérification Dépenses + Budget
         const resultStats = await request.query(`
             SELECT 
                 (SELECT SUM(estimated_cost) FROM token_usage_logs WHERE user_id = @user_id AND status = 'allowed') as total_spent,
@@ -55,7 +54,7 @@ const checkQuota = async (req, res) => {
             allowed: true,
             selectedProvider: provider || "ChatGPT",
             selectedModel: provider || "ChatGPT",
-            remainingDailyTokens: -1, // Plus pertinent si on gere au cout
+            remainingDailyTokens: -1, 
             remainingMonthlyBudget: remainingBudget,
             policyAction: action
         });

@@ -1,5 +1,3 @@
-// backend/src/config/prompts.js
-
 const SYSTEM_PROMPTS = {
     'analyse_technique': "Tu es un expert technique senior. Analyse le code et fournis des recommandations sécurisées.",
     'analyse_documents': "Tu es un analyste documentaire. Résume le contenu en mettant en avant les points clés pour la DSI.",

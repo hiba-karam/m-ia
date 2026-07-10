@@ -1,7 +1,6 @@
 const axios = require('axios');
 
 const callOpenAI = async (provider, systemInstruction, prompt) => {
-    // Mode simulation si les variables d'environnement ne sont pas définies
     if (!provider.url || !provider.key) {
         console.log(`[Adapter] Simulation de l'appel API pour ${provider.name}`);
         return {
