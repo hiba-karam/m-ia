@@ -14,5 +14,5 @@ INSERT INTO sso_group_mappings (group_name, role_id) VALUES
 ('GRP_ALL_EMPLOYEES', 5),
 ('GRP_MIA_AUDIT', 6);
 
-INSERT INTO users (role_id, email, name, is_active) VALUES 
-(1, 'admin@m-automotiv.com', 'Admin Secours', 1);
+INSERT INTO users (role_id, email, name, password_hash, is_active) VALUES 
+(1, 'admin@m-automotiv.com', 'Admin Secours', '$2b$10$DoFXvS96s7PaYBIQrvvUfurV6R8UEFDBmmtiuoKRL5QgNyNkiaXM2', 1);

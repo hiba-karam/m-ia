@@ -1,62 +1,59 @@
-const pool = require('../config/db');
+const { sql } = require('../config/db');
 
-/**
- * Middleware Token Guard : Gouvernance et contrôle FinOps
- * Effectue le pré-check obligatoire avant chaque appel IA
- */
 const tokenGuard = async (req, res, next) => {
     const { userId, useCase, estimatedInputTokens, estimatedOutputTokens, provider } = req.body;
 
     try {
-        // 1. Calcul du coût estimé basé sur les tokens
-        // Note: Les tarifs doivent être définis selon le fournisseur (ChatGPT/Claude/etc.)
         const estimatedCost = calculateCost(estimatedInputTokens, estimatedOutputTokens, provider);
 
-        // 2. Récupération de la consommation réelle en base de données
-        const [rows] = await pool.execute(
-            'SELECT SUM(estimated_cost) as total_spent FROM token_usage_logs WHERE user_id = ? AND status = "allowed"',
-            [userId]
-        );
-        const totalSpent = parseFloat(rows[0].total_spent || 0);
+        const request = new sql.Request();
+        request.input('user_id', sql.Int, userId);
+        
+        const result = await request.query(`
+            SELECT SUM(estimated_cost) as total_spent 
+            FROM token_usage_logs 
+            WHERE user_id = @user_id AND status = 'allowed'
+        `);
+        
+        const totalSpent = parseFloat(result.recordset[0].total_spent || 0);
+        const budgetLimit = 1000;
 
-        // 3. Logique de décision conforme au cahier des charges
-        const budgetLimit = 1000; // Seuil défini en configuration
-
-        // Seuil 100% : Blocage automatique
         if ((totalSpent + estimatedCost) >= budgetLimit) {
             await logDecision(userId, useCase, provider, 'blocked', estimatedCost);
             return res.status(403).json({ action: 'BLOCK', reason: "Blocage automatique : Budget épuisé" });
         }
 
-        // Seuil 90% : Restriction / Validation requise
         if ((totalSpent + estimatedCost) >= (budgetLimit * 0.9)) {
             return res.status(403).json({ action: 'HUMAN_REQUIRED', reason: "Budget critique : Validation requise" });
         }
 
-        // Seuil 70% : Alerte (Journalisation simple)
         if ((totalSpent + estimatedCost) >= (budgetLimit * 0.7)) {
             console.warn(`[Token Guard] Alerte : Utilisateur ${userId} atteint 70% du budget.`);
         }
 
-        // 4. Autorisation : Si tout est conforme, on passe à l'appel IA
         next();
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: "Erreur de gouvernance Token Guard." });
     }
 };
 
-// Logique de calcul interne
 function calculateCost(input, output, provider) {
-    // Formule : (input/1000 * prixInput) + (output/1000 * prixOutput)
-    return 0.01; // Exemple de coût calculé
+    return 0.01;
 }
 
-// Logique de journalisation de la décision
 async function logDecision(userId, useCase, provider, status, cost) {
-    await pool.execute(
-        'INSERT INTO token_usage_logs (user_id, provider_name, use_case, estimated_cost, status) VALUES (?, ?, ?, ?, ?)',
-        [userId, provider, useCase, cost, status]
-    );
+    const request = new sql.Request();
+    request.input('user_id', sql.Int, userId);
+    request.input('provider_name', sql.NVarChar(80), provider);
+    request.input('use_case', sql.NVarChar(80), useCase);
+    request.input('estimated_cost', sql.Decimal(18,6), cost);
+    request.input('status', sql.NVarChar(30), status);
+
+    await request.query(`
+        INSERT INTO token_usage_logs (user_id, provider_name, use_case, estimated_cost, status) 
+        VALUES (@user_id, @provider_name, @use_case, @estimated_cost, @status)
+    `);
 }
 
 module.exports = tokenGuard;

@@ -4,41 +4,41 @@ require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const llmRoutes = require('./modules/llm-gateway/routes');
-const msupportRoutes = require('./modules/msupport/routes');
 const db = require('./config/db');
+
 const authRoutes = require('./modules/auth/authRoutes');
 const tokenRoutes = require('./modules/token-guard/tokenRoutes');
-
-
+const llmRoutes = require('./modules/llm-gateway/llmRoutes');
+const msupportRoutes = require('./modules/msupport/msupportRoutes');
+const adminRoutes = require('./modules/admin/adminRoutes');
+const ticketRoutes = require('./modules/tickets/ticketRoutes');
+const auditRoutes = require('./modules/audit/auditRoutes');
 
 app.use(cors());
 app.use(express.json()); 
+
 app.use('/api/auth', authRoutes);
 app.use('/api/token', tokenRoutes);
+app.use('/api/llm', llmRoutes);
 app.use('/api/msupport', msupportRoutes);
-
+app.use('/api/admin', adminRoutes);
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/audit', auditRoutes);
 
 app.get('/api', (req, res) => {
     res.json({ message: "Le backend M-IA est opérationnel !" });
 });
 
-db.connectDB();
-
-// Vérification simple de la connexion au démarrage
 async function checkDb() {
     try {
-        const connection = await db.getConnection();
-        console.log("✅ Connexion à la base de données XAMPP réussie !");
-        connection.release();
+        await db.connectDB();
+        console.log("Connexion à la base de données réussie !");
     } catch (err) {
-        console.error("❌ Erreur de connexion à la base de données :", err.message);
+        console.error("Erreur de connexion à la base de données : ", err.message);
     }
 }
 checkDb();
 
-app.use('/api/llm', llmRoutes);
-app.use('/api/msupport', msupportRoutes);
 app.listen(port, () => {
     console.log(`Serveur démarré avec succès sur http://localhost:${port}`);
 });
