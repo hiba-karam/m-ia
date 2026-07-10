@@ -1,4 +1,5 @@
 const sql = require('mssql');
+require('dotenv').config();
 
 let pool = null;
 
@@ -9,7 +10,8 @@ const dbConfig = {
     database: process.env.DB_NAME || 'M_IA_DB',
     options: {
         encrypt: process.env.DB_ENCRYPT !== 'false',
-        trustServerCertificate: process.env.DB_TRUST_CERT === 'true',
+        enableArithAbort: true,
+        trustServerCertificate: process.env.DB_TRUST_CERT !== 'false',
     },
     pool: {
         max: 10,
@@ -18,13 +20,17 @@ const dbConfig = {
     },
 };
 
-async function getPool() {
+async function connectDB() {
     if (pool) return pool;
     if (!dbConfig.user || !dbConfig.password) {
         throw new Error('Configuration SQL Server incomplète (DB_USER, DB_PASSWORD).');
     }
     pool = await sql.connect(dbConfig);
     return pool;
+}
+
+async function getPool() {
+    return connectDB();
 }
 
 async function query(text, params = {}) {
@@ -36,4 +42,4 @@ async function query(text, params = {}) {
     return request.query(text);
 }
 
-module.exports = { sql, getPool, query };
+module.exports = { sql, connectDB, getPool, query };

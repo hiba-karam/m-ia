@@ -1,18 +1,19 @@
-# M-IA - Plateforme de Support et d'Audit Intelligent
+# M-IA - Plateforme de Support et d'Audit
 
 ## À propos
-Ce projet constitue le socle backend (API) de l'application M-IA, développée pour M-AUTOMOTIV. Il s'agit d'une architecture robuste conçue pour centraliser la gestion des tickets de support, le traitement des e-mails, et l'administration des utilisateurs. Le système intègre une gestion avancée des rôles (RBAC) via des mappages de groupes SSO, ainsi que des mécanismes stricts d'audit et de traçabilité pour répondre aux exigences de cybersécurité du système d'information.
+M-IA est une plateforme de support et d'audit développée pour M-AUTOMOTIV, visant à automatiser la gestion des tickets M-support via l'analyse intelligente des e-mails entrants et un assistant conversationnel interne. La plateforme centralise l'orchestration logicielle, l'authentification SSO et la gouvernance des accès aux modèles d'IA via un LLM Gateway sécurisé. Elle intègre une modélisation SQL Server rigoureuse pour la gestion des rôles, des tokens et de la traçabilité, répondant aux exigences de cybersécurité du système d'information.
 
 ## Fonctionnalités
-* **Authentification & Rôles :** Accès sécurisé et gestion dynamique des permissions (format JSON) avec mappage direct sur les groupes SSO de l'entreprise (Admin, DSI/RSSI, Agents de support).
-* **Traçabilité & Audit :** Implémentation d'un système de logs rigoureux pour suivre l'utilisation des tokens d'API et les requêtes, garantissant la conformité et la sécurité des données.
-* **Gestion des Tickets & E-mails :** Architecture relationnelle permettant de corréler précisément (via des UUID) les requêtes e-mails entrantes aux tickets de support générés.
-* **API RESTful :** Architecture centralisée assurant la communication sécurisée et asynchrone entre la base de données et les futures interfaces clientes.
+* **Authentification & Rôles :** Accès sécurisé et gestion dynamique des permissions avec mappage direct sur les groupes SSO de l'entreprise (Admin, DSI/RSSI, Agents de support).
+* **Token Guard (FinOps IA) :** Contrôle des quotas, vérification des budgets et système de restriction/blocage automatique avant chaque transaction pour maîtriser les coûts.
+* **Orchestration & LLM Gateway :** Centralisation du routage multi-modèles et sécurisation des accès aux modèles d'IA exclusivement côté serveur.
+* **Automatisation M-support :** Analyse de la boîte mail officielle, système anti-doublon (via Message-ID et empreinte de contenu) et génération automatique de tickets via l'API M-support.
+* **Traçabilité & Audit :** Implémentation d'un système de logs rigoureux pour suivre la consommation des tokens, les historiques de tickets et les requêtes, garantissant la conformité et la sécurité des données.
 
 ## Technologies & Architecture
 * **Backend :** Node.js, Express.js
 * **Base de données :** Microsoft SQL Server (T-SQL), module mssql
-* **Architecture :** API REST, logique métier centralisée, modèle de données relationnel sécurisé avec intégrité référentielle
+* **Architecture :** API interne, logique métier centralisée, intégration d'API tierces, modèle de données relationnel sécurisé avec intégrité référentielle
 * **Outils :** Visual Studio Code, Git, SQL Server Management Studio (SSMS)
 
 ## Auteurs
