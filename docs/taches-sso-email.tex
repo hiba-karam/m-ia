@@ -1,0 +1,396 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+\geometry{margin=2.5cm}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!10},
+  keywordstyle=\color{blue},
+  commentstyle=\color{green!50!black}
+}
+
+\title{Documentation technique --- Tâches SSO et Email Connector\\Projet M-IA}
+\author{Anas Idrissi --- M-AUTOMOTIV}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+Ce document explique \textbf{uniquement} les parties réalisées pour les deux tâches assignées dans le Business Plan M-IA (v5) :
+\begin{itemize}[leftmargin=*]
+  \item \textbf{SSO} : OpenID Connect / SAML / LDAP, connexion entreprise, MFA, mapping groupes vers rôles ;
+  \item \textbf{Email Connector} : Microsoft Graph API ou IMAP sécurisé, lecture de la boîte mail officielle M-support uniquement.
+\end{itemize}
+
+Les autres modules (LLM Gateway, Token Guard, frontend, etc.) ne sont \textbf{pas} couverts ici.
+
+\section{Tâche 1 --- SSO (Authentification et rôles)}
+
+\subsection{Objectif métier}
+
+Permettre aux collaborateurs de se connecter à M-IA avec leur identité entreprise, en appliquant :
+\begin{itemize}
+  \item MFA selon la politique du fournisseur d'identité ;
+  \item RBAC (rôles : Admin, DSI/RSSI, Superviseur, Agent support, Utilisateur, Lecteur audit) ;
+  \item mapping automatique des groupes SSO vers les rôles M-IA ;
+  \item un compte local de secours pour l'administration.
+\end{itemize}
+
+\subsection{Fichiers créés}
+
+\begin{tabular}{@{}ll@{}}
+\toprule
+Fichier & Rôle \\
+\midrule
+\texttt{database/001\_auth\_email\_schema.sql} & Tables \texttt{roles}, \texttt{users}, \texttt{sso\_group\_mappings}, \texttt{sessions} \\
+\texttt{database/002\_seed\_auth\_email.sql} & Rôles RBAC + exemples de mappings groupes SSO \\
+\texttt{backend/src/config/auth.config.js} & Configuration OIDC, SAML, LDAP, JWT, MFA \\
+\texttt{backend/src/modules/auth/auth.service.js} & Logique auth : sessions, tokens, mapping rôles \\
+\texttt{backend/src/modules/auth/providers/oidc.provider.js} & Fournisseur OpenID Connect \\
+\texttt{backend/src/modules/auth/providers/saml.provider.js} & Fournisseur SAML \\
+\texttt{backend/src/modules/auth/providers/ldap.provider.js} & Fournisseur LDAP/AD \\
+\texttt{backend/src/modules/auth/auth.controller.js} & Contrôleurs HTTP \\
+\texttt{backend/src/modules/auth/auth.routes.js} & Routes API \\
+\texttt{backend/src/middlewares/auth.middleware.js} & Middleware JWT + RBAC \\
+\texttt{backend/scripts/create-admin.js} & Création du compte admin local \\
+\bottomrule
+\end{tabular}
+
+\subsection{Partie 1 --- Schéma SQL (auth)}
+
+\textbf{Explication :} Le schéma SQL stocke les identités, les rôles, les mappings SSO et les sessions.
+
+\begin{itemize}
+  \item \texttt{roles} : définit les permissions JSON par rôle applicatif.
+  \item \texttt{users} : compte utilisateur (local ou synchronisé SSO/LDAP).
+  \item \texttt{sso\_group\_mappings} : correspondance \texttt{(sso\_provider, group\_name) $\rightarrow$ role\_id}.
+  \item \texttt{sessions} : refresh tokens hashés (SHA-256), IP, user-agent, expiration, révocation.
+\end{itemize}
+
+\textbf{Pourquoi :} Conformément au BP (pages 7--9), M-IA doit tracer les accès et appliquer RBAC de façon persistante.
+
+\subsection{Partie 2 --- Configuration (\texttt{auth.config.js})}
+
+\textbf{Explication :} Centralise toutes les variables d'environnement SSO.
+
+\begin{itemize}
+  \item \texttt{AUTH\_MODE} : mode principal (\texttt{local}, \texttt{oidc}, \texttt{saml}, \texttt{ldap}).
+  \item \texttt{OIDC\_*} : issuer, client ID/secret, redirect URI, scopes (Entra ID recommandé).
+  \item \texttt{SAML\_*} : entry point, certificat IdP, attribut des groupes.
+  \item \texttt{LDAP\_*} : URL, base DN, filtres de recherche utilisateur/groupe.
+  \item \texttt{JWT\_SECRET}, \texttt{JWT\_EXPIRES\_IN} : tokens d'accès courts (15 min par défaut).
+  \item \texttt{MFA\_REQUIRED\_ADMIN} : bloque l'admin local si MFA non validé.
+\end{itemize}
+
+\subsection{Partie 3 --- OpenID Connect (\texttt{oidc.provider.js})}
+
+\textbf{Explication :} Implémente le flux authorization code avec \texttt{openid-client}.
+
+\begin{enumerate}
+  \item \texttt{GET /api/auth/sso/login?mode=oidc} : génère une URL de redirection vers l'IdP (state + nonce anti-CSRF).
+  \item L'utilisateur s'authentifie chez l'IdP (MFA géré par Entra ID / IdP).
+  \item \texttt{GET /api/auth/sso/callback?mode=oidc} : échange le code, récupère \texttt{userinfo}, extrait email et groupes.
+  \item Détection MFA via claims \texttt{amr} ou \texttt{acr}.
+\end{enumerate}
+
+\textbf{Pourquoi OIDC en priorité :} Recommandé par le BP pour Microsoft Entra ID (page 7).
+
+\subsection{Partie 4 --- SAML (\texttt{saml.provider.js})}
+
+\textbf{Explication :} Alternative pour les IdP SAML classiques via \texttt{@node-saml/node-saml}.
+
+\begin{itemize}
+  \item \texttt{GET /api/auth/sso/login?mode=saml} : redirection vers l'IdP SAML.
+  \item \texttt{POST /api/auth/saml/callback} : validation de l'assertion SAML, extraction email et groupes.
+\end{itemize}
+
+\textbf{Usage :} Si l'entreprise n'utilise pas OIDC mais un IdP SAML legacy.
+
+\subsection{Partie 5 --- LDAP (\texttt{ldap.provider.js})}
+
+\textbf{Explication :} Authentification on-prem Active Directory / LDAP.
+
+\begin{enumerate}
+  \item \texttt{POST /api/auth/login} avec \texttt{\{"mode":"ldap","username":"...","password":"..."\}}.
+  \item Recherche de l'utilisateur via \texttt{LDAP\_USER\_SEARCH\_FILTER}.
+  \item Bind LDAP pour valider le mot de passe.
+  \item Récupération des groupes (\texttt{memberOf}) et mapping vers rôle M-IA.
+\end{enumerate}
+
+\subsection{Partie 6 --- Login local de secours}
+
+\textbf{Explication :} Compte admin local si SSO indisponible (risque BP page 14).
+
+\begin{itemize}
+  \item \texttt{POST /api/auth/login} avec \texttt{email} + \texttt{password}.
+  \item Hash bcrypt (12 rounds) stocké en base.
+  \item Script \texttt{scripts/create-admin.js} pour créer/mettre à jour l'admin sans mot de passe en dur dans le SQL.
+\end{itemize}
+
+\subsection{Partie 7 --- Mapping groupes SSO $\rightarrow$ rôles (\texttt{auth.service.js})}
+
+\textbf{Explication :} Fonction \texttt{resolveRoleFromGroups(provider, groups)} :
+
+\begin{enumerate}
+  \item Interroge \texttt{sso\_group\_mappings} pour le provider (\texttt{oidc}, \texttt{saml}, \texttt{ldap}).
+  \item Sélectionne le premier rôle correspondant aux groupes de l'utilisateur.
+  \item Sinon, applique le rôle par défaut (\texttt{Utilisateur}).
+  \item Crée ou met à jour l'utilisateur via \texttt{upsertSsoUser}.
+\end{enumerate}
+
+\textbf{Exemple de mapping (seed SQL) :}
+\begin{itemize}
+  \item Groupe Entra ID \texttt{M-IA-Admins} $\rightarrow$ rôle \texttt{Admin}
+  \item Groupe \texttt{M-IA-Support} $\rightarrow$ rôle \texttt{AgentSupport}
+\end{itemize}
+
+\subsection{Partie 8 --- JWT, sessions et RBAC (\texttt{auth.middleware.js})}
+
+\textbf{Explication :}
+
+\begin{itemize}
+  \item \textbf{Access token JWT} : courte durée, contient rôle et permissions.
+  \item \textbf{Refresh token} : stocké hashé en base, durée 7 jours.
+  \item \textbf{Middleware \texttt{authenticate}} : vérifie le Bearer token.
+  \item \textbf{Middleware \texttt{authorize}} : vérifie les permissions requises (ex. \texttt{tickets:write}).
+\end{itemize}
+
+\subsection{Endpoints SSO implémentés}
+
+\begin{tabular}{@{}lll@{}}
+\toprule
+Endpoint & Méthode & Description \\
+\midrule
+\texttt{/api/auth/providers} & GET & Modes auth disponibles \\
+\texttt{/api/auth/login} & POST & Login local ou LDAP \\
+\texttt{/api/auth/sso/login} & GET & Redirection OIDC/SAML \\
+\texttt{/api/auth/sso/callback} & GET/POST & Callback OIDC \\
+\texttt{/api/auth/saml/callback} & POST & Callback SAML \\
+\texttt{/api/auth/me} & GET & Profil utilisateur connecté \\
+\bottomrule
+\end{tabular}
+
+\newpage
+\section{Tâche 2 --- Email Connector (Boîte M-support)}
+
+\subsection{Objectif métier}
+
+Lire \textbf{uniquement} la boîte mail officielle de M-support, sans accès aux boîtes personnelles. Fonctions :
+\begin{itemize}
+  \item synchronisation des emails non lus ;
+  \item anti-doublon (Message-ID + hash du contenu) ;
+  \item métadonnées des pièces jointes ;
+  \item filtrage domaines expéditeurs et extensions autorisées.
+\end{itemize}
+
+\subsection{Fichiers créés}
+
+\begin{tabular}{@{}ll@{}}
+\toprule
+Fichier & Rôle \\
+\midrule
+\texttt{database/001\_auth\_email\_schema.sql} & Tables \texttt{email\_messages}, \texttt{email\_attachments} \\
+\texttt{backend/src/config/email.config.js} & Config Graph API / IMAP / règles sync \\
+\texttt{backend/src/modules/email/connectors/graph.connector.js} & Connecteur Microsoft Graph \\
+\texttt{backend/src/modules/email/connectors/imap.connector.js} & Connecteur IMAP sécurisé \\
+\texttt{backend/src/modules/email/dedup.service.js} & Anti-doublon Message-ID + hash \\
+\texttt{backend/src/modules/email/email.service.js} & Orchestration sync \\
+\texttt{backend/src/modules/email/email.controller.js} & Contrôleurs HTTP \\
+\texttt{backend/src/modules/email/email.routes.js} & Routes API \\
+\bottomrule
+\end{tabular}
+
+\subsection{Partie 1 --- Schéma SQL (email)}
+
+\textbf{Explication :}
+
+\begin{itemize}
+  \item \texttt{email\_messages} : stocke Message-ID, expéditeur, sujet, aperçu corps, hash SHA-256, statut, boîte source, \texttt{correlation\_id}.
+  \item \texttt{email\_attachments} : métadonnées PJ (nom, type MIME, taille) --- pas de stockage binaire massif.
+  \item Statuts : \texttt{new}, \texttt{processed}, \texttt{duplicate}, \texttt{rejected}, \texttt{error}.
+\end{itemize}
+
+\textbf{Anti-doublon (BP page 4)} : contrainte UNIQUE sur \texttt{message\_id} + recherche sur \texttt{body\_hash}.
+
+\subsection{Partie 2 --- Configuration (\texttt{email.config.js})}
+
+\textbf{Explication :}
+
+\begin{itemize}
+  \item \texttt{EMAIL\_CONNECTOR} : \texttt{graph} (défaut) ou \texttt{imap}.
+  \item \texttt{MSUPPORT\_MAILBOX} : adresse officielle M-support (obligatoire).
+  \item \texttt{EMAIL\_SYNC\_MAX} : limite d'emails par synchronisation (50 par défaut).
+  \item \texttt{EMAIL\_ALLOWED\_DOMAINS} : whitelist domaines expéditeurs (anti-spam).
+  \item \texttt{EMAIL\_ALLOWED\_EXTENSIONS} : whitelist extensions PJ.
+  \item \texttt{EMAIL\_ATTACHMENT\_MAX\_BYTES} : taille max PJ (10 Mo par défaut).
+\end{itemize}
+
+\subsection{Partie 3 --- Connecteur Microsoft Graph (\texttt{graph.connector.js})}
+
+\textbf{Explication :} Utilise \texttt{@azure/identity} + \texttt{@microsoft/microsoft-graph-client}.
+
+\begin{enumerate}
+  \item Authentification app-only (ClientSecretCredential) avec permissions Graph.
+  \item Lecture des messages non lus de la boîte \texttt{MSUPPORT\_MAILBOX}.
+  \item Récupération des pièces jointes (métadonnées uniquement).
+  \item Marquage \texttt{isRead=true} après traitement réussi.
+\end{enumerate}
+
+\textbf{Prérequis Azure :} App Registration avec permission \texttt{Mail.Read} (application) sur la boîte M-support.
+
+\subsection{Partie 4 --- Connecteur IMAP (\texttt{imap.connector.js})}
+
+\textbf{Explication :} Alternative on-prem ou fournisseur mail non-Microsoft.
+
+\begin{enumerate}
+  \item Connexion IMAP sécurisée (port 993, TLS) via \texttt{imapflow}.
+  \item Parsing MIME via \texttt{mailparser}.
+  \item Recherche emails \texttt{unseen}, marquage \texttt{\textbackslash Seen} après traitement.
+\end{enumerate}
+
+\textbf{Quand l'utiliser :} Si Graph API n'est pas disponible mais IMAP est autorisé par la DSI.
+
+\subsection{Partie 5 --- Anti-doublon (\texttt{dedup.service.js})}
+
+\textbf{Explication :} Avant insertion en base :
+
+\begin{enumerate}
+  \item Vérifier si \texttt{message\_id} existe déjà $\rightarrow$ statut \texttt{duplicate}.
+  \item Vérifier si \texttt{body\_hash} (SHA-256 du corps) existe $\rightarrow$ doublon contenu.
+  \item Sinon, insérer email + pièces jointes avec un \texttt{correlation\_id} UUID.
+\end{enumerate}
+
+\textbf{Conformité BP :} ``Zéro doublon grâce au Message-ID email et à l'empreinte du contenu'' (page 3).
+
+\subsection{Partie 6 --- Orchestration sync (\texttt{email.service.js})}
+
+\textbf{Explication :} Fonction \texttt{syncMailbox()} :
+
+\begin{enumerate}
+  \item Sélectionne le connecteur (\texttt{graph} ou \texttt{imap}).
+  \item Récupère les emails non lus.
+  \item Filtre par domaine expéditeur si configuré.
+  \item Filtre les pièces jointes (taille + extension).
+  \item Sauvegarde en base via \texttt{dedup.service}.
+  \item Marque l'email comme lu côté connecteur si sauvegarde OK.
+  \item Retourne un rapport : \texttt{fetched}, \texttt{saved}, \texttt{duplicates}, \texttt{rejected}, \texttt{errors}.
+\end{enumerate}
+
+\subsection{Partie 7 --- Sécurité d'accès aux routes email}
+
+Les routes email sont protégées par JWT + RBAC :
+\begin{itemize}
+  \item \texttt{POST /api/msupport/emails/sync} : permission \texttt{tickets:write} ou Admin ;
+  \item \texttt{GET /api/msupport/emails} : permission \texttt{tickets:read}.
+\end{itemize}
+
+\textbf{Pourquoi :} Seuls les agents support / admins peuvent déclencher la sync de la boîte M-support.
+
+\subsection{Endpoints Email implémentés}
+
+\begin{tabular}{@{}lll@{}}
+\toprule
+Endpoint & Méthode & Description \\
+\midrule
+\texttt{/api/msupport/emails/sync} & POST & Synchroniser la boîte M-support \\
+\texttt{/api/msupport/emails} & GET & Lister les emails importés \\
+\texttt{/api/msupport/emails/:id} & GET & Détail d'un email + PJ \\
+\bottomrule
+\end{tabular}
+
+\newpage
+\section{Intégration serveur}
+
+\textbf{Fichier :} \texttt{backend/src/server.js}
+
+\begin{itemize}
+  \item Monte \texttt{/api/auth} $\rightarrow$ routes SSO ;
+  \item Monte \texttt{/api/msupport} $\rightarrow$ routes Email ;
+  \item Parse JSON + URL-encoded (requis pour callback SAML).
+\end{itemize}
+
+\section{Configuration (.env)}
+
+Copier \texttt{backend/.env.example} vers \texttt{backend/.env} et renseigner :
+
+\subsection{SSO minimum (local dev)}
+\begin{lstlisting}
+AUTH_MODE=local
+DB_USER=...
+DB_PASSWORD=...
+JWT_SECRET=...
+\end{lstlisting}
+
+\subsection{SSO Entra ID (production)}
+\begin{lstlisting}
+AUTH_MODE=oidc
+OIDC_ISSUER=https://login.microsoftonline.com/{tenant}/v2.0
+OIDC_CLIENT_ID=...
+OIDC_CLIENT_SECRET=...
+\end{lstlisting}
+
+\subsection{Email Graph API}
+\begin{lstlisting}
+EMAIL_CONNECTOR=graph
+MSUPPORT_MAILBOX=msupport@entreprise.ma
+AZURE_TENANT_ID=...
+AZURE_CLIENT_ID=...
+AZURE_CLIENT_SECRET=...
+\end{lstlisting}
+
+\section{Procédure de mise en service}
+
+\begin{enumerate}
+  \item Exécuter \texttt{database/001\_auth\_email\_schema.sql} sur SQL Server.
+  \item Exécuter \texttt{database/002\_seed\_auth\_email.sql}.
+  \item Configurer \texttt{backend/.env}.
+  \item Créer l'admin : \texttt{ADMIN\_EMAIL=... ADMIN\_PASSWORD=... node scripts/create-admin.js}.
+  \item Démarrer : \texttt{npm start} dans \texttt{backend/}.
+  \item Tester login : \texttt{POST /api/auth/login}.
+  \item Tester sync email : \texttt{POST /api/msupport/emails/sync} (avec token JWT).
+\end{enumerate}
+
+\section{Correspondance Business Plan}
+
+\begin{tabular}{@{}ll@{}}
+\toprule
+Exigence BP & Implémentation \\
+\midrule
+OpenID Connect / SAML / LDAP & 3 providers dans \texttt{modules/auth/providers/} \\
+MFA & Détection claims OIDC/SAML + flag \texttt{mfa\_verified} \\
+Mapping groupes $\rightarrow$ rôles & Table \texttt{sso\_group\_mappings} + service \\
+Microsoft Graph API & \texttt{graph.connector.js} \\
+IMAP sécurisé & \texttt{imap.connector.js} \\
+Boîte M-support uniquement & \texttt{MSUPPORT\_MAILBOX} obligatoire \\
+Anti-doublon Message-ID + hash & \texttt{dedup.service.js} \\
+API sync email & \texttt{POST /api/msupport/emails/sync} \\
+\bottomrule
+\end{tabular}
+
+\section{Limites et prochaines étapes (hors périmètre)}
+
+Les éléments suivants ne sont \textbf{pas} implémentés dans ce livrable (autres tâches du projet) :
+\begin{itemize}
+  \item Analyse IA des emails et création ticket M-support via API ;
+  \item Token Guard (quotas tokens avant appel IA) ;
+  \item Frontend React (pages Login, Dashboard) ;
+  \item Webhook Graph au lieu du polling manuel ;
+  \item Révocation refresh token via endpoint dédié.
+\end{itemize}
+
+\end{document}
