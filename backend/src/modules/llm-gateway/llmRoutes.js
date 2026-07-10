@@ -18,6 +18,15 @@ const PROVIDER_MAP = {
     'LONG_CONTEXT': { name: 'Kimi', url: process.env.KIMI_API_URL, key: process.env.KIMI_API_KEY }
 };
 
+// Tarification au 1000 tokens (basé sur le marché réel en $)
+const PRICING_PER_1K_TOKENS = {
+    'ChatGPT': { input: 0.00015, output: 0.00060 }, // GPT-4o-mini
+    'Claude': { input: 0.003, output: 0.015 },      // Claude 3.5 Sonnet
+    'Gemini': { input: 0.000075, output: 0.00030 }, // Gemini 1.5 Flash
+    'DeepSeek': { input: 0.00014, output: 0.00028 },// DeepSeek-V3/Chat
+    'Kimi': { input: 0.001, output: 0.001 }         // Moonshot-v1 (estimé)
+};
+
 const getProviderByUseCase = (useCase) => {
     switch (useCase) {
         case 'analyse_technique': return PROVIDER_MAP.TECHNICAL; 
@@ -120,18 +129,28 @@ router.post('/chat', tokenGuard, async (req, res) => {
             await reqAiMsg.query(`INSERT INTO chat_messages (session_id, role, content, model_used) VALUES (@session_id, @role, @content, @model_used)`);
         }
 
+        const inputTokens = aiResponse.usage ? aiResponse.usage.input_tokens : 0;
+        const outputTokens = aiResponse.usage ? aiResponse.usage.output_tokens : 0;
+
+        let estimatedCost = 0;
+        const providerPricing = PRICING_PER_1K_TOKENS[actualProviderName];
+        if (providerPricing) {
+            estimatedCost = ((inputTokens / 1000) * providerPricing.input) + ((outputTokens / 1000) * providerPricing.output);
+        }
+
         const reqAudit = new sql.Request();
         reqAudit.input('user_id', sql.Int, userId);
         reqAudit.input('provider_name', sql.NVarChar(80), actualProviderName);
         reqAudit.input('model_name', sql.NVarChar(120), actualProviderName);
         reqAudit.input('use_case', sql.NVarChar(80), useCase || 'auto');
         reqAudit.input('status', sql.NVarChar(30), 'allowed');
-        reqAudit.input('input_tokens', sql.Int, aiResponse.usage ? aiResponse.usage.input_tokens : 0);
-        reqAudit.input('output_tokens', sql.Int, aiResponse.usage ? aiResponse.usage.output_tokens : 0);
+        reqAudit.input('input_tokens', sql.Int, inputTokens);
+        reqAudit.input('output_tokens', sql.Int, outputTokens);
+        reqAudit.input('estimated_cost', sql.Decimal(18,6), estimatedCost);
         
         await reqAudit.query(`
-            INSERT INTO token_usage_logs (user_id, provider_name, model_name, use_case, status, input_tokens, output_tokens)
-            VALUES (@user_id, @provider_name, @model_name, @use_case, @status, @input_tokens, @output_tokens)
+            INSERT INTO token_usage_logs (user_id, provider_name, model_name, use_case, status, input_tokens, output_tokens, estimated_cost)
+            VALUES (@user_id, @provider_name, @model_name, @use_case, @status, @input_tokens, @output_tokens, @estimated_cost)
         `);
 
         res.status(200).json({
