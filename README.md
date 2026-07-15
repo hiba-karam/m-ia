@@ -1,36 +1,20 @@
-# m-ia
+# M-IA - Plateforme de Support et d'Audit
 
-Dépôt du projet M-IA (voir `Business_Plan_M-IA.pdf` pour le cadrage complet).
+## À propos
+M-IA est une plateforme de support et d'audit développée pour M-AUTOMOTIV, visant à automatiser la gestion des tickets M-support via l'analyse intelligente des e-mails entrants et un assistant conversationnel interne. La plateforme centralise l'orchestration logicielle, l'authentification SSO et la gouvernance des accès aux modèles d'IA via un LLM Gateway sécurisé. Elle intègre une modélisation SQL Server rigoureuse pour la gestion des rôles, des tokens et de la traçabilité, répondant aux exigences de cybersécurité du système d'information.
 
-Structure conforme à la section 10.2 du business plan :
+## Fonctionnalités
+* **Authentification & Rôles :** Accès sécurisé et gestion dynamique des permissions avec mappage direct sur les groupes SSO de l'entreprise (Admin, DSI/RSSI, Agents de support).
+* **Token Guard (FinOps IA) :** Contrôle des quotas, vérification des budgets et système de restriction/blocage automatique avant chaque transaction pour maîtriser les coûts.
+* **Orchestration & LLM Gateway :** Centralisation du routage multi-modèles et sécurisation des accès aux modèles d'IA exclusivement côté serveur.
+* **Automatisation M-support :** Analyse de la boîte mail officielle, système anti-doublon (via Message-ID et empreinte de contenu) et génération automatique de tickets via l'API M-support.
+* **Traçabilité & Audit :** Implémentation d'un système de logs rigoureux pour suivre la consommation des tokens, les historiques de tickets et les requêtes, garantissant la conformité et la sécurité des données.
 
-```
-/m-ia
-  /frontend    ✅ Complet (React + Vite) — voir frontend/README.md
-  /backend     ⏳ Non traité ici (à fusionner avec le travail de l'équipe backend)
-  /database    ⏳ Scripts SQL Server à ajouter (voir section 11 du business plan)
-  /docs        ⏳ architecture.md / api.md / deployment.md à rédiger
-```
+## Technologies & Architecture
+* **Backend :** Node.js, Express.js
+* **Base de données :** Microsoft SQL Server (T-SQL), module mssql
+* **Architecture :** API interne, logique métier centralisée, intégration d'API tierces, modèle de données relationnel sécurisé avec intégrité référentielle
+* **Outils :** Visual Studio Code, Git, SQL Server Management Studio (SSMS)
 
-## Frontend
-
-Le dossier `frontend/` est un projet React + Vite fonctionnel et autonome, avec :
-- Login (SSO + compte de secours local)
-- Chat IA (historique conversations, sélecteur de modèle, pièces jointes)
-- Dashboard DSI (KPI, consommation tokens, budgets par service)
-- Tickets (liste + détail email/analyse IA/réponse API)
-- Administration (fournisseurs IA, quotas, rôles & SSO, boîte M-support)
-
-Toutes les données sont actuellement simulées dans `frontend/src/services/api/`.
-Voir `frontend/README.md` pour les instructions d'installation et le détail de ce
-qu'il faut changer pour brancher le vrai backend.
-
-## Pour fusionner avec le dépôt GitHub existant
-
-Si ce dossier `frontend/` doit remplacer ou compléter un frontend déjà présent dans
-votre dépôt `github.com/hiba-karam/m-ia` :
-
-1. Comparez d'abord les deux versions (surtout si vos coéquipiers ont déjà commencé
-   `frontend/src/App.jsx`, `services/`, etc.) pour ne rien écraser d'important.
-2. Le plus sûr : ouvrez votre dépôt réel dans **VS Code avec l'extension Claude Code**,
-   collez ce dossier à côté, et demandez une fusion assistée fichier par fichier.
+## Auteurs
+Projet réalisé par Hiba Karam en collaboration avec Chaimaa Amdaai, Anas Idrissi et Rizki Bekhich - Stagiaires @ M&#8209;AUTOMOTIV.
