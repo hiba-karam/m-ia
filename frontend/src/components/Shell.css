@@ -13,6 +13,7 @@
   flex-shrink: 0;
   padding: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.12);
+
   z-index: 2;
 }
 
@@ -28,7 +29,8 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--orange), var(--orange-hover));
+  background: linear-gradient(135deg, var(--color-brand-orange), var(--color-brand-orange-hover));
+
   display: flex;
   align-items: center;
   justify-content: center;
@@ -47,8 +49,9 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 16px;
-  color: var(--orange);
+  color: var(--color-brand-orange);
   letter-spacing: 0.02em;
+
 }
 
 .shell__brand-version {
@@ -80,8 +83,9 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--orange);
+  background: var(--color-brand-orange);
   color: #fff;
+
   display: flex;
   align-items: center;
   justify-content: center;
@@ -148,17 +152,17 @@
 }
 
 .shell__nav-item--active {
-  background: var(--orange-soft);
-  color: var(--text-1);
-  border: 1px solid var(--line);
+  background: var(--sidebar-active);
+  color: #ffffff;
 }
 
 .shell__nav-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--orange);
+  background: var(--color-brand-orange);
   position: absolute;
+
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
@@ -254,8 +258,9 @@
 
 .shell__topbar-icon-btn:hover {
   background: var(--orange-soft);
-  color: var(--orange);
-  border-color: var(--orange);
+  color: var(--color-brand-orange);
+  border-color: var(--color-brand-orange);
+
 }
 
 /* ── Hamburger (mobile only) ── */

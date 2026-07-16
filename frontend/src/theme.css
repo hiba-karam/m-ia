@@ -1,0 +1,151 @@
+/* theme.css — Identité visuelle M-AUTOMOTIV
+   À importer une seule fois dans ton App.jsx : import './theme.css'
+*/
+
+:root {
+  /* --- Couleurs de marque (extraites du logo) --- */
+  --color-primary: #2A0150;      /* violet foncé — fond, surfaces sombres */
+  --color-primary-light: #3D1470; /* variante plus claire pour hover/bordures */
+  --color-accent: #E75F46;        /* orange — actions, accents, liens actifs */
+  --color-accent-dark: #C94B34;   /* orange assombri pour hover sur boutons */
+
+  /* --- Neutres (pour ne pas tout faire violet/orange, garder du repos visuel) --- */
+  --color-bg: #FAF9FB;
+  --color-surface: #FFFFFF;
+  --color-border: #E4E1E8;
+  --color-text: #1C1224;
+  --color-text-muted: #6B6272;
+
+  /* --- Typographie --- */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif; /* titres, chiffres — registre automobile */
+  --font-body: 'Inter', -apple-system, sans-serif;
+
+  /* --- Rayon / ombre sobres --- */
+  --radius: 4px;
+  --shadow-sm: 0 1px 2px rgba(42, 1, 80, 0.08);
+  --shadow-md: 0 4px 12px rgba(42, 1, 80, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-primary);
+  margin: 0 0 0.5em;
+}
+
+/* --- Header --- */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: var(--color-primary);
+  border-bottom: 3px solid var(--color-accent);
+}
+
+.app-header .logo {
+  color: var(--color-accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+}
+
+.app-header nav a {
+  color: #EDE7F2;
+  text-decoration: none;
+  margin-left: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.app-header nav a:hover,
+.app-header nav a.active {
+  color: var(--color-accent);
+}
+
+/* --- Boutons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius);
+  border: none;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--color-accent-dark); }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+}
+.btn-secondary:hover { border-color: var(--color-primary); }
+
+/* --- Cartes (ex: liste de tickets) --- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.card + .card { margin-top: 0.75rem; }
+
+.card-title {
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 0.25rem;
+}
+
+.card-meta {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* --- Badge de statut --- */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-open { background: #FDECE8; color: var(--color-accent-dark); }
+.badge-closed { background: #EDE7F2; color: var(--color-primary); }
+
+/* --- Focus visible (accessibilité) --- */
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

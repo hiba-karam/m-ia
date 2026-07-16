@@ -9,7 +9,7 @@ export default defineConfig({
       // Le backend M-IA (Node.js + Express) sera monté ici une fois développé.
       // En attendant, les appels passent par des mocks dans src/services/api.
       "/api": {
-        target: "http://localhost:4000",
+        target: "http://localhost:5000", // adresse de ton backend
         changeOrigin: true,
       },
     },

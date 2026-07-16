@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Plus, Paperclip, X, FileText } from "lucide-react";
+import { Send, Plus, Paperclip, X, FileText, MessageSquare } from "lucide-react";
 import QuotaGauge from "../../components/QuotaGauge";
 import {
   sendChatMessage, getTokenUsage, listChatSessions, createChatSession, listProviders,
@@ -7,12 +7,7 @@ import {
 import { modelTagColors } from "../../services/api/mockData";
 import "./Chat.css";
 
-const INITIAL_MESSAGE = {
-  role: "assistant",
-  model: "Claude",
-  useCase: "Analyse longue",
-  text: "Bonjour Sofia. Je suis M-IA, votre assistant interne. Je peux analyser des documents, résumer des tickets ou répondre à vos questions. Le modèle utilisé pour chaque réponse est choisi automatiquement selon le besoin et le coût.",
-};
+const TOKENS_PER_MESSAGE = 350;
 
 function MicroGauge({ used, budget }) {
   const pct = Math.min(100, Math.round((used / budget) * 100));
@@ -28,12 +23,14 @@ function MicroGauge({ used, budget }) {
 export default function Chat() {
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
-  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
+  // Store messages per session: { [sessionId]: message[] }
+  const [sessionsMessages, setSessionsMessages] = useState({});
   const [input, setInput] = useState("");
   const [pendingFile, setPendingFile] = useState(null);
   const [model, setModel] = useState("auto");
   const [providers, setProviders] = useState([]);
   const [quota, setQuota] = useState({ remainingDailyTokens: 12600, dailyBudget: 20000 });
+  const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -43,20 +40,38 @@ export default function Chat() {
     );
     listChatSessions().then((data) => {
       setSessions(data);
-      setActiveSessionId(data[0]?.id ?? null);
+      if (data.length > 0) {
+        setActiveSessionId(data[0].id);
+      }
     });
     listProviders().then(setProviders);
   }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [activeSessionId, sessionsMessages]);
+
+  const currentMessages = activeSessionId ? (sessionsMessages[activeSessionId] || []) : [];
 
   async function handleNewConversation() {
     const session = await createChatSession();
     setSessions((s) => [session, ...s]);
     setActiveSessionId(session.id);
-    setMessages([INITIAL_MESSAGE]);
+    setSessionsMessages((prev) => ({
+      ...prev,
+      [session.id]: [],
+    }));
+  }
+
+  function handleSelectSession(sessionId) {
+    setActiveSessionId(sessionId);
+    // Initialize session messages if not already present
+    if (!sessionsMessages[sessionId]) {
+      setSessionsMessages((prev) => ({
+        ...prev,
+        [sessionId]: [],
+      }));
+    }
   }
 
   function handleFilePick(e) {
@@ -67,15 +82,59 @@ export default function Chat() {
 
   async function send() {
     if (!input.trim() && !pendingFile) return;
+    if (isSending) return;
+
+    setIsSending(true);
     const text = input;
     const attachment = pendingFile;
 
-    setMessages((m) => [...m, { role: "user", text, attachment: attachment?.name }]);
+    // Auto-create a session if none exists
+    let sessionId = activeSessionId;
+    if (!sessionId) {
+      const session = await createChatSession();
+      setSessions((s) => [session, ...s]);
+      setActiveSessionId(session.id);
+      sessionId = session.id;
+      setSessionsMessages((prev) => ({
+        ...prev,
+        [session.id]: [],
+      }));
+    }
+
+    // Add user message to the current session
+    const userMsg = { role: "user", text, attachment: attachment?.name };
+    setSessionsMessages((prev) => ({
+      ...prev,
+      [sessionId]: [...(prev[sessionId] || []), userMsg],
+    }));
     setInput("");
     setPendingFile(null);
 
+    // Simulate AI response after delay
     const reply = await sendChatMessage({ text, model, attachment });
-    setMessages((m) => [...m, { role: "assistant", ...reply }]);
+    setSessionsMessages((prev) => ({
+      ...prev,
+      [sessionId]: [...(prev[sessionId] || []), { role: "assistant", ...reply }],
+    }));
+
+    // Update quota (approximate)
+    setQuota((prev) => ({
+      ...prev,
+      remainingDailyTokens: Math.max(0, prev.remainingDailyTokens - TOKENS_PER_MESSAGE),
+    }));
+
+    // Update session title in sidebar based on first user message
+    if (text && text.length > 0) {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId
+            ? { ...s, title: text.length > 40 ? text.substring(0, 40) + "…" : text, updatedAt: "à l'instant" }
+            : s
+        )
+      );
+    }
+
+    setIsSending(false);
   }
 
   const used = quota.dailyBudget - quota.remainingDailyTokens;
@@ -89,16 +148,23 @@ export default function Chat() {
           <Plus size={15} /> Nouvelle conversation
         </button>
         <div className="chat-history__list">
-          {sessions.map((s) => (
-            <button
-              key={s.id}
-              className={"chat-history__item" + (s.id === activeSessionId ? " chat-history__item--active" : "")}
-              onClick={() => setActiveSessionId(s.id)}
-            >
-              <div className="chat-history__item-title">{s.title}</div>
-              <div className="chat-history__item-date">{s.updatedAt}</div>
-            </button>
-          ))}
+          {sessions.length === 0 ? (
+            <div className="chat-history__empty">
+              <MessageSquare size={20} strokeWidth={1.5} />
+              <span>Aucune conversation</span>
+            </div>
+          ) : (
+            sessions.map((s) => (
+              <button
+                key={s.id}
+                className={"chat-history__item" + (s.id === activeSessionId ? " chat-history__item--active" : "")}
+                onClick={() => handleSelectSession(s.id)}
+              >
+                <div className="chat-history__item-title">{s.title}</div>
+                <div className="chat-history__item-date">{s.updatedAt}</div>
+              </button>
+            ))
+          )}
         </div>
       </aside>
 
@@ -129,33 +195,55 @@ export default function Chat() {
           </div>
         </header>
 
-        <div className="chat__body" ref={scrollRef}>
-          <div className="chat__thread">
-            {messages.map((m, i) => (
-              <div key={i} className={`chat__row chat__row--${m.role}`}>
-                {m.role === "assistant" && (
-                  <>
-                    <span
-                      className="chat__model-tag"
-                      style={{ color: modelTagColors[m.model]?.color, background: modelTagColors[m.model]?.bg }}
-                    >
-                      {m.model} · {m.useCase}
-                    </span>
-                    <MicroGauge used={used} budget={quota.dailyBudget} />
-                  </>
-                )}
-                <div className={`chat__bubble chat__bubble--${m.role}`}>
-                  {m.attachment && (
-                    <div className="chat__attachment-chip">
-                      <FileText size={13} /> {m.attachment}
-                    </div>
-                  )}
-                  {m.text}
-                </div>
-              </div>
-            ))}
+        {!activeSessionId ? (
+          <div className="chat__empty-center">
+            <div className="chat__empty-icon">
+              <MessageSquare size={48} strokeWidth={1.2} />
+            </div>
+            <h2>Bienvenue sur M-IA</h2>
+            <p>
+              Cliquez sur <strong>Nouvelle conversation</strong> pour commencer
+              ou sélectionnez une conversation existante dans l'historique.
+            </p>
           </div>
-        </div>
+        ) : (
+          <div className="chat__body" ref={scrollRef}>
+            <div className="chat__thread">
+              {currentMessages.map((m, i) => (
+                <div key={i} className={`chat__row chat__row--${m.role}`}>
+                  {m.role === "assistant" && (
+                    <>
+                      <span
+                        className="chat__model-tag"
+                        style={{ color: modelTagColors[m.model]?.color, background: modelTagColors[m.model]?.bg }}
+                      >
+                        {m.model} · {m.useCase}
+                      </span>
+                      <MicroGauge used={used} budget={quota.dailyBudget} />
+                    </>
+                  )}
+                  <div className={`chat__bubble chat__bubble--${m.role}`}>
+                    {m.attachment && (
+                      <div className="chat__attachment-chip">
+                        <FileText size={13} /> {m.attachment}
+                      </div>
+                    )}
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {isSending && (
+                <div className="chat__row chat__row--assistant">
+                  <div className="chat__bubble chat__bubble--assistant chat__bubble--typing">
+                    <span className="chat__typing-dot" />
+                    <span className="chat__typing-dot" />
+                    <span className="chat__typing-dot" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="chat__composer">
           {pendingFile && (
@@ -181,8 +269,9 @@ export default function Chat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
               placeholder="Posez une question ou décrivez un document à analyser…"
+              disabled={isSending}
             />
-            <button onClick={send} aria-label="Envoyer">
+            <button onClick={send} aria-label="Envoyer" disabled={isSending}>
               <Send size={15} />
             </button>
           </div>

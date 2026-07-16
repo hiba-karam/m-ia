@@ -1,92 +1,126 @@
 // Façade API frontend.
 //
-// Chaque fonction ci-dessous simule aujourd'hui un appel réseau (délai + données mockées).
-// Quand le backend Node.js/Express sera prêt, il suffira de remplacer le corps de chaque
-// fonction par un vrai fetch() vers l'endpoint correspondant (voir section 12 du business plan) :
-//
-//   checkTokenQuota()   -> POST /api/token/check
-//   getTokenUsage()     -> GET  /api/token/usage
-//   listTickets()       -> GET  /api/msupport/tickets
-//   sendChatMessage()   -> POST /api/chat/messages
-//   listProviders()     -> GET  /api/admin/providers
-//   updateProvider()    -> PUT  /api/admin/providers
-//   listQuotaProfiles() -> GET  /api/admin/quotas
-//
-// Toutes les fonctions sont asynchrones (Promise) dès maintenant, pour que le passage
-// au vrai réseau ne change aucun appelant.
+// Chaque fonction ci-dessous effectue un vrai fetch() vers le backend Express
+// via le proxy Vite (/api -> http://localhost:5000).
 
-import {
-  usageData, ticketsData, aiProviders, quotaProfiles,
-  roleDefs, ssoMappings, mailboxSettings, chatSessions,
-} from "./mockData";
+const BASE_URL = '/api';
 
-const LATENCY = 400;
-
-function delay(value, ms = LATENCY) {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
+async function handleResponse(response) {
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    let errorMessage;
+    try {
+      const errorJson = JSON.parse(errorBody);
+      errorMessage = errorJson.message || errorJson.error || response.statusText;
+    } catch {
+      errorMessage = errorBody || response.statusText;
+    }
+    throw new Error(errorMessage);
+  }
+  return response.json();
 }
 
-export async function getTokenUsage() {
-  return delay({ series: usageData, remainingDailyTokens: 12600, dailyBudget: 20000 });
+async function fetchJSON(url, options = {}) {
+  const response = await fetch(`${BASE_URL}${url}`, {
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  });
+  return handleResponse(response);
 }
 
-export async function checkTokenQuota({ estimatedInputTokens, estimatedOutputTokens }) {
-  // TODO brancher sur POST /api/token/check une fois le backend disponible.
-  return delay({
-    allowed: true,
-    selectedProvider: "Claude",
-    selectedModel: "claude-compatible-model",
-    remainingDailyTokens: 12600,
-    remainingMonthlyBudget: 780.5,
-    policyAction: "allow",
+// ─── Auth ────────────────────────────────────────────
+
+export async function login({ username, password }) {
+  return fetchJSON('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
   });
 }
 
+export async function loginSSO(provider = 'oidc') {
+  window.location.href = `${BASE_URL}/auth/sso/${provider}`;
+}
+
+export async function refreshToken(token) {
+  return fetchJSON('/auth/refresh', {
+    method: 'POST',
+    body: JSON.stringify({ refreshToken: token }),
+  });
+}
+
+export async function logout() {
+  return fetchJSON('/auth/logout', { method: 'POST' });
+}
+
+export async function getMe() {
+  return fetchJSON('/auth/me');
+}
+
+// ─── Token / Quota ───────────────────────────────────
+
+export async function getTokenUsage() {
+  return fetchJSON('/token/usage');
+}
+
+export async function checkTokenQuota({ estimatedInputTokens, estimatedOutputTokens }) {
+  return fetchJSON('/token/check', {
+    method: 'POST',
+    body: JSON.stringify({ estimatedInputTokens, estimatedOutputTokens }),
+  });
+}
+
+// ─── Chat / LLM ──────────────────────────────────────
+
 export async function listChatSessions() {
-  // GET /api/chat/sessions
-  return delay(chatSessions);
+  return fetchJSON('/llm/sessions');
 }
 
 export async function createChatSession() {
-  // POST /api/chat/sessions
-  return delay({ id: `cs-${Date.now()}`, title: "Nouvelle conversation", updatedAt: "à l'instant" });
+  return fetchJSON('/llm/sessions', { method: 'POST' });
 }
 
-export async function sendChatMessage({ text, model = "auto", attachment = null }) {
-  // POST /api/chat/messages
-  await checkTokenQuota({ estimatedInputTokens: 400, estimatedOutputTokens: 300 });
-  const chosenModel = model === "auto" ? "Gemini" : model;
-  const attachmentNote = attachment ? ` J'ai bien reçu le fichier « ${attachment.name} » et je peux l'analyser.` : "";
-  return delay({
-    model: chosenModel,
-    useCase: attachment ? "Analyse de document" : "Analyse multimodale",
-    text:
-      "Requête reçue. Voici un exemple de réponse générée par le LLM Gateway — dans un environnement réel, ce message viendrait du modèle sélectionné selon la politique de coût et de confidentialité en vigueur." +
-      attachmentNote,
-  }, 700);
+export async function sendChatMessage({ text, model = 'auto', attachment = null }) {
+  const body = { text, model };
+  if (attachment) {
+    body.attachment = {
+      name: attachment.name,
+      size: attachment.size,
+      type: attachment.type,
+    };
+  }
+  return fetchJSON('/llm/chat', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
+
+// ─── Tickets / M-Support ─────────────────────────────
 
 export async function listTickets() {
-  return delay(ticketsData);
+  return fetchJSON('/tickets');
 }
 
+// ─── Admin ───────────────────────────────────────────
+
 export async function listProviders() {
-  return delay(aiProviders);
+  return fetchJSON('/admin/providers');
 }
 
 export async function updateProvider(name, changes) {
-  // TODO brancher sur PUT /api/admin/providers
-  return delay({ name, ...changes });
+  return fetchJSON('/admin/providers', {
+    method: 'PUT',
+    body: JSON.stringify({ name, ...changes }),
+  });
 }
 
 export async function listQuotaProfiles() {
-  return delay(quotaProfiles);
+  return fetchJSON('/admin/quotas');
 }
 
 export async function listRoles() {
-  return delay({ roles: roleDefs, ssoMappings });
+  return fetchJSON('/admin/roles');
 }
 
 export async function getMailboxSettings() {
-  return delay(mailboxSettings);
+  return fetchJSON('/admin/mailbox');
 }

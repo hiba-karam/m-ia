@@ -7,13 +7,19 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import "./Shell.css";
 
-const NAV_ITEMS = [
-  { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-  { to: "/tickets", label: "Support & Tickets", icon: LifeBuoy },
-  { to: "/chat", label: "Assistant IA", icon: Bot },
-  { to: "/tickets", label: "Gestion des tickets", icon: Ticket, match: "/tickets" },
-  { to: "/budget", label: "Suivi budgétaire", icon: BarChart3 },
-  { to: "/admin", label: "Administration", icon: Settings },
+const ADMIN_ROLES = ["Admin M-IA", "DSI / RSSI", "Superviseur support", "Agent support"];
+
+function isAdmin(role) {
+  return ADMIN_ROLES.includes(role);
+}
+
+const ALL_NAV_ITEMS = [
+  { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, adminOnly: false },
+  { to: "/tickets-all", label: "Support & Tickets", icon: LifeBuoy, adminOnly: true },
+  { to: "/chat", label: "Assistant IA", icon: Bot, adminOnly: false },
+  { to: "/tickets", label: "Mes tickets", icon: Ticket, adminOnly: false },
+  { to: "/budget", label: "Suivi budgétaire", icon: BarChart3, adminOnly: true },
+  { to: "/admin", label: "Administration", icon: Settings, adminOnly: true },
 ];
 
 export default function Shell({ children }) {
@@ -21,6 +27,11 @@ export default function Shell({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const userIsAdmin = isAdmin(user?.role);
+
+  // Filter nav items based on role
+  const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => !item.adminOnly || userIsAdmin);
 
   function handleLogout() {
     logout();
@@ -66,10 +77,9 @@ export default function Shell({ children }) {
         <nav className="shell__nav">
           {NAV_ITEMS.map(({ to, label, icon: Icon, match }) => {
             const isActive = match ? location.pathname.startsWith(match) : location.pathname === to;
-            // Handle double-matching: if we're on tickets, highlight the first match
             const isTicketsActive = location.pathname.startsWith("/tickets");
-            const isTicketsItem = label === "Support & Tickets" || label === "Gestion des tickets";
-            
+            const isTicketsItem = label === "Support & Tickets" || label === "Mes tickets";
+
             return (
               <NavLink
                 key={label}

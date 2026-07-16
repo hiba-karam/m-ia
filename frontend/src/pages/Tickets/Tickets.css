@@ -133,7 +133,7 @@
   padding: 9px 12px 9px 36px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #0d0a1f;
+  background: #ffffff;
   font-family: var(--font-body);
   font-size: 13px;
   color: var(--text-1);
@@ -154,7 +154,7 @@
   padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #0d0a1f;
+  background: #ffffff;
   font-family: var(--font-body);
   font-size: 13px;
   color: var(--text-1);
@@ -196,7 +196,7 @@
   text-align: left;
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
-  background: rgba(13, 10, 31, 0.4);
+  background: transparent;
 }
 
 .tickets__table tbody td {
@@ -295,6 +295,69 @@
 }
 
 /* ── Pagination ── */
+.tickets__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 12px;
+  color: var(--text-2);
+}
+
+.tickets__loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #f2643c;
+  border-radius: 50%;
+  animation: tickets-spin 0.8s linear infinite;
+}
+
+@keyframes tickets-spin {
+  to { transform: rotate(360deg); }
+}
+
+.tickets__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 8px;
+  color: var(--text-2);
+}
+
+.tickets__empty h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.tickets__empty p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.tickets__btn-reset {
+  margin-top: 12px;
+  padding: 8px 20px;
+  background: #f2643c;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.tickets__btn-reset:hover {
+  background: #d94f2a;
+}
+
 .tickets__pagination {
   display: flex;
   justify-content: space-between;
@@ -405,7 +468,7 @@
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #0d0a1f;
+  background: #ffffff;
   font-family: var(--font-body);
   font-size: 13px;
   color: var(--text-1);

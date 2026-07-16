@@ -3,6 +3,7 @@ const router = express.Router();
 const ticketController = require('./ticketController');
 const { verifyToken } = require('../../middlewares/authMiddleware');
 
+router.get('/', verifyToken, ticketController.listTickets);
 router.post('/draft', verifyToken, ticketController.createTicketDraft);
 
 module.exports = router;

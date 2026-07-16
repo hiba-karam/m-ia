@@ -39,6 +39,68 @@ async function login(req, res) {
     }
 }
 
+async function refresh(req, res) {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            return res.status(400).json({ error: 'refreshToken requis.' });
+        }
+
+        const { query, hashToken } = require('./authService');
+        const hashed = hashToken(refreshToken);
+        const result = await query(
+            `SELECT s.user_id, s.expires_at, u.email, u.name, u.auth_source,
+                    r.name AS role_name, r.permissions
+             FROM sessions s
+             INNER JOIN users u ON u.id = s.user_id
+             INNER JOIN roles r ON r.id = u.role_id
+             WHERE s.refresh_token_hash = @hash AND s.expires_at > GETDATE()`,
+            { hash: hashed }
+        );
+
+        const session = result.recordset[0];
+        if (!session) {
+            return res.status(401).json({ error: 'Refresh token invalide ou expiré.' });
+        }
+
+        // Delete old session
+        await query('DELETE FROM sessions WHERE refresh_token_hash = @hash', { hash: hashed });
+
+        const user = {
+            id: session.user_id,
+            email: session.email,
+            name: session.name,
+            role_name: session.role_name,
+            auth_source: session.auth_source,
+            permissions: session.permissions,
+        };
+
+        const response = await buildAuthResponse(user, req);
+        return res.json(response);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+async function logout(req, res) {
+    try {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            // Invalidate session if refresh token is provided
+            const { refreshToken } = req.body;
+            if (refreshToken) {
+                const { query, hashToken } = require('./authService');
+                const hashed = hashToken(refreshToken);
+                await query('DELETE FROM sessions WHERE refresh_token_hash = @hash', { hash: hashed });
+            }
+        }
+        return res.json({ message: 'Déconnexion réussie.' });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 async function ssoLogin(req, res) {
     try {
         const mode = (req.query.mode || authConfig.authMode).toLowerCase();
@@ -129,4 +191,4 @@ async function providers(req, res) {
     });
 }
 
-module.exports = { login, ssoLogin, ssoCallback, samlCallback, me, providers };
+module.exports = { login, refresh, logout, ssoLogin, ssoCallback, samlCallback, me, providers };

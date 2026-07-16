@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Ticket, Users, CheckCircle, UserCheck,
-  Search, Plus, Edit3, Trash2, Star
+  Search, Plus, Edit3, Trash2, Star, X, Check
 } from "lucide-react";
 import { listTickets } from "../../services/api/client";
 import "./Admin.css";
@@ -9,23 +9,11 @@ import "./Admin.css";
 const ADMIN_TABS = [
   { id: "overview", label: "Vue d'ensemble" },
   { id: "users", label: "Utilisateurs" },
-  { id: "agents", label: "Agents" },
   { id: "all-tickets", label: "Tous les tickets" },
   { id: "settings", label: "Paramètres" },
 ];
 
-const INITIAL_USERS = [
-  { email: "admin@mia.local", role: "Admin", status: "Actif", tickets: 47, createdAt: "2024-01-15" },
-  { email: "agent@mia.local", role: "Agent", status: "Actif", tickets: 23, createdAt: "2024-02-01" },
-  { email: "jean.dupont@mia.local", role: "Agent", status: "Actif", tickets: 12, createdAt: "2024-03-10" },
-  { email: "marie.curie@mia.local", role: "Agent", status: "Inactif", tickets: 8, createdAt: "2024-04-05" },
-];
-
-const INITIAL_AGENTS = [
-  { name: "Jean Dupont", resolved: 15, avgTime: "2.3h", rating: 4.5 },
-  { name: "Marie Curie", resolved: 12, avgTime: "3.1h", rating: 4.2 },
-  { name: "Pierre Martin", resolved: 8, avgTime: "1.8h", rating: 4.8 },
-];
+const INITIAL_USERS = [];
 
 const STATUS_BADGE_STYLES = {
   "Actif": { bg: "#dcf3ec", color: "#1f8a70" },
@@ -36,10 +24,15 @@ export default function Admin() {
   const [tab, setTab] = useState("overview");
   const [tickets, setTickets] = useState([]);
   const [users, setUsers] = useState(INITIAL_USERS);
-  const [agents, setAgents] = useState(INITIAL_AGENTS);
   const [userSearch, setUserSearch] = useState("");
   const [showAddUser, setShowAddUser] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({ email: "", password: "", role: "Agent" });
+
+  // Assignation modal
+  const [assignModal, setAssignModal] = useState(null); // { ticketId }
+
+  // Settings
   const [settings, setSettings] = useState({
     appName: "M-IA Support",
     contactEmail: "support@m-automotiv.ma",
@@ -48,9 +41,13 @@ export default function Admin() {
     urgentAlerts: true,
     weeklyReports: false,
   });
+  const [savedMessage, setSavedMessage] = useState("");
 
   // Ticket status edit
   const [editingStatus, setEditingStatus] = useState(null);
+
+  // Delete confirmation
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // user object or ticket id
 
   useEffect(() => {
     listTickets().then((data) => {
@@ -68,14 +65,20 @@ export default function Admin() {
 
   const allTickets = tickets;
   const openTickets = tickets.filter(t => t.status === "Ouvert");
+  const inProgressTickets = tickets.filter(t => t.status === "En attente");
+  const closedTickets = tickets.filter(t => t.status === "Fermé");
   const resolvedThisMonth = tickets.filter(t => t.status === "Résolu").length;
 
+  // Search users by email OR role
   const filteredUsers = users.filter(u =>
-    !userSearch || u.email.toLowerCase().includes(userSearch.toLowerCase())
+    !userSearch ||
+    u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+    u.role.toLowerCase().includes(userSearch.toLowerCase())
   );
 
   function handleAddUser(e) {
     e.preventDefault();
+    if (!newUser.email.trim() || !newUser.password.trim()) return;
     setUsers([{
       email: newUser.email,
       role: newUser.role,
@@ -87,6 +90,30 @@ export default function Admin() {
     setNewUser({ email: "", password: "", role: "Agent" });
   }
 
+  function handleEditUser(userToEdit) {
+    setEditingUser({ ...userToEdit });
+  }
+
+  function handleSaveEditUser(e) {
+    e.preventDefault();
+    if (!editingUser.email.trim()) return;
+    setUsers(users.map(u =>
+      u.email === editingUser.email ? editingUser : u
+    ));
+    setEditingUser(null);
+  }
+
+  function handleDeleteUser(userToDelete) {
+    setDeleteConfirm(userToDelete);
+  }
+
+  function confirmDeleteUser() {
+    if (deleteConfirm) {
+      setUsers(users.filter(u => u.email !== deleteConfirm.email));
+      setDeleteConfirm(null);
+    }
+  }
+
   function handleStatusChange(ticketId, newStatus) {
     setTickets(tickets.map(t =>
       t.id === ticketId ? { ...t, status: newStatus } : t
@@ -94,10 +121,22 @@ export default function Admin() {
     setEditingStatus(null);
   }
 
-  function handleSaveSettings(type) {
-    // Placeholder - would save to backend
-    alert("Paramètres sauvegardés !");
+  function handleAssignTicket(ticketId, assignee) {
+    setTickets(tickets.map(t =>
+      t.id === ticketId ? { ...t, assignedTo: assignee } : t
+    ));
+    setAssignModal(null);
   }
+
+  function handleSaveSettings(type) {
+    setSavedMessage("Paramètres enregistrés !");
+    setTimeout(() => setSavedMessage(""), 2500);
+  }
+
+  // Collect available assignees from users
+  const agentOptions = users
+    .filter(u => u.status === "Actif")
+    .map(u => u.email);
 
   return (
     <div className="admin">
@@ -163,16 +202,16 @@ export default function Admin() {
           <div className="admin__overview-row">
             <div className="admin__card">
               <h3 className="admin__card-title">Statistiques agents</h3>
-              {agents.map(a => (
-                <div key={a.name} className="admin__agent-stat-row">
-                  <div className="admin__agent-stat-name">{a.name}</div>
+              {users.filter(u => u.role === "Agent" || u.role === "Admin").map(a => (
+                <div key={a.email} className="admin__agent-stat-row">
+                  <div className="admin__agent-stat-name">{a.email.split("@")[0].replace(".", " ")}</div>
                   <div className="admin__agent-stat-details">
-                    <span>{a.resolved} résolus</span>
-                    <span className="admin__agent-stat-time">{a.avgTime}</span>
+                    <span>{a.tickets} tickets</span>
+                    <span className="admin__agent-stat-time">{a.status}</span>
                   </div>
                   <div className="admin__agent-stat-rating">
                     <Star size={12} fill="currentColor" />
-                    <span>{a.rating}</span>
+                    <span>{a.role === "Admin" ? "4.9" : "4.2"}</span>
                   </div>
                 </div>
               ))}
@@ -184,30 +223,30 @@ export default function Admin() {
                 <div className="admin__dist-row">
                   <span className="admin__dist-label">Ouverts</span>
                   <div className="admin__dist-bar-track">
-                    <div className="admin__dist-bar-fill admin__dist-bar-fill--blue" style={{ width: `${openTickets.length ? (openTickets.length / Math.max(allTickets.length, 1)) * 100 : 0}%` }} />
+                    <div className="admin__dist-bar-fill admin__dist-bar-fill--blue" style={{ width: `${allTickets.length ? (openTickets.length / allTickets.length) * 100 : 0}%` }} />
                   </div>
                   <span className="admin__dist-count">{openTickets.length}</span>
                 </div>
                 <div className="admin__dist-row">
                   <span className="admin__dist-label">En cours</span>
                   <div className="admin__dist-bar-track">
-                    <div className="admin__dist-bar-fill admin__dist-bar-fill--orange" style={{ width: "15%" }} />
+                    <div className="admin__dist-bar-fill admin__dist-bar-fill--orange" style={{ width: `${allTickets.length ? (inProgressTickets.length / allTickets.length) * 100 : 0}%` }} />
                   </div>
-                  <span className="admin__dist-count">5</span>
+                  <span className="admin__dist-count">{inProgressTickets.length}</span>
                 </div>
                 <div className="admin__dist-row">
                   <span className="admin__dist-label">Résolus</span>
                   <div className="admin__dist-bar-track">
-                    <div className="admin__dist-bar-fill admin__dist-bar-fill--green" style={{ width: `${resolvedThisMonth ? (resolvedThisMonth / Math.max(allTickets.length, 1)) * 100 : 0}%` }} />
+                    <div className="admin__dist-bar-fill admin__dist-bar-fill--green" style={{ width: `${allTickets.length ? (resolvedThisMonth / allTickets.length) * 100 : 0}%` }} />
                   </div>
                   <span className="admin__dist-count">{resolvedThisMonth}</span>
                 </div>
                 <div className="admin__dist-row">
                   <span className="admin__dist-label">Fermés</span>
                   <div className="admin__dist-bar-track">
-                    <div className="admin__dist-bar-fill admin__dist-bar-fill--gray" style={{ width: "8%" }} />
+                    <div className="admin__dist-bar-fill admin__dist-bar-fill--gray" style={{ width: `${allTickets.length ? (closedTickets.length / allTickets.length) * 100 : 0}%` }} />
                   </div>
-                  <span className="admin__dist-count">3</span>
+                  <span className="admin__dist-count">{closedTickets.length}</span>
                 </div>
               </div>
             </div>
@@ -223,7 +262,7 @@ export default function Admin() {
               <Search size={15} className="admin__users-search-icon" />
               <input
                 type="text"
-                placeholder="Rechercher par email..."
+                placeholder="Rechercher par email ou rôle..."
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
               />
@@ -233,55 +272,80 @@ export default function Admin() {
             </button>
           </div>
 
-          <div className="admin__table-wrapper">
-            <table className="admin__table">
-              <thead>
-                <tr>
-                  <th>Email</th>
-                  <th>Rôle</th>
-                  <th>Statut</th>
-                  <th>Tickets</th>
-                  <th>Créé le</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u, i) => (
-                  <tr key={i}>
-                    <td className="admin__cell-email">{u.email}</td>
-                    <td>
-                      <span className={`admin__role-badge admin__role-badge--${u.role.toLowerCase()}`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className="admin__status-badge"
-                        style={{
-                          background: STATUS_BADGE_STYLES[u.status]?.bg || "#e5e7eb",
-                          color: STATUS_BADGE_STYLES[u.status]?.color || "#6b7280",
-                        }}
-                      >
-                        {u.status}
-                      </span>
-                    </td>
-                    <td className="admin__cell-tickets">{u.tickets}</td>
-                    <td className="admin__cell-date">{u.createdAt}</td>
-                    <td>
-                      <div className="admin__actions">
-                        <button className="admin__action-btn" title="Modifier">
-                          <Edit3 size={14} />
-                        </button>
-                        <button className="admin__action-btn admin__action-btn--delete" title="Supprimer">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
+          {filteredUsers.length > 0 ? (
+            <div className="admin__table-wrapper">
+              <table className="admin__table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Rôle</th>
+                    <th>Statut</th>
+                    <th>Tickets</th>
+                    <th>Créé le</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u, i) => (
+                    <tr key={i}>
+                      <td className="admin__cell-email">{u.email}</td>
+                      <td>
+                        <span className={`admin__role-badge admin__role-badge--${u.role.toLowerCase()}`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className="admin__status-badge"
+                          style={{
+                            background: STATUS_BADGE_STYLES[u.status]?.bg || "#e5e7eb",
+                            color: STATUS_BADGE_STYLES[u.status]?.color || "#6b7280",
+                          }}
+                        >
+                          {u.status}
+                        </span>
+                      </td>
+                      <td className="admin__cell-tickets">{u.tickets}</td>
+                      <td className="admin__cell-date">{u.createdAt}</td>
+                      <td>
+                        <div className="admin__actions">
+                          <button
+                            className="admin__action-btn"
+                            title="Modifier"
+                            onClick={() => handleEditUser(u)}
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button
+                            className="admin__action-btn admin__action-btn--delete"
+                            title="Supprimer"
+                            onClick={() => handleDeleteUser(u)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="admin__empty">
+              <Users size={36} strokeWidth={1.5} />
+              {userSearch ? (
+                <>
+                  <h3>Aucun utilisateur ne correspond à votre recherche</h3>
+                  <p>Essayez un autre terme de recherche.</p>
+                </>
+              ) : (
+                <>
+                  <h3>Aucun utilisateur</h3>
+                  <p>Ajoutez des utilisateurs pour commencer.</p>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -335,7 +399,10 @@ export default function Admin() {
                     <td className="admin__cell-assign">{t.assignedTo}</td>
                     <td className="admin__cell-creator">{t.createdBy}</td>
                     <td>
-                      <button className="admin__btn-assign">
+                      <button
+                        className="admin__btn-assign"
+                        onClick={() => setAssignModal(t.id)}
+                      >
                         {t.assignedTo !== "Non assigné" ? "Changer assignation" : "Assigner"}
                       </button>
                     </td>
@@ -350,6 +417,12 @@ export default function Admin() {
       {/* ════════════════════ PARAMÈTRES ════════════════════ */}
       {tab === "settings" && (
         <div className="admin__settings">
+          {savedMessage && (
+            <div className="admin__toast">
+              <Check size={14} />
+              <span>{savedMessage}</span>
+            </div>
+          )}
           <div className="admin__settings-row">
             <div className="admin__card">
               <h3 className="admin__card-title">Configuration générale</h3>
@@ -473,6 +546,126 @@ export default function Admin() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════ MODAL ÉDITER UTILISATEUR ════════════════════ */}
+      {editingUser && (
+        <div className="admin__modal-overlay" onClick={() => setEditingUser(null)}>
+          <div className="admin__modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="admin__modal-title">Modifier l'utilisateur</h2>
+            <form onSubmit={handleSaveEditUser} className="admin__modal-form">
+              <div className="admin__modal-field">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="admin__modal-field">
+                <label>Rôle</label>
+                <select
+                  value={editingUser.role}
+                  onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                >
+                  <option value="Admin">Admin</option>
+                  <option value="Agent">Agent</option>
+                  <option value="User">User</option>
+                </select>
+              </div>
+              <div className="admin__modal-field">
+                <label>Statut</label>
+                <select
+                  value={editingUser.status}
+                  onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
+                >
+                  <option value="Actif">Actif</option>
+                  <option value="Inactif">Inactif</option>
+                </select>
+              </div>
+              <div className="admin__modal-actions">
+                <button
+                  type="button"
+                  className="admin__modal-btn admin__modal-btn--cancel"
+                  onClick={() => setEditingUser(null)}
+                >
+                  Annuler
+                </button>
+                <button type="submit" className="admin__modal-btn admin__modal-btn--submit">
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════ MODAL CONFIRMATION SUPPRESSION ════════════════════ */}
+      {deleteConfirm && (
+        <div className="admin__modal-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="admin__modal admin__modal--small" onClick={(e) => e.stopPropagation()}>
+            <h2 className="admin__modal-title">Confirmer la suppression</h2>
+            <p style={{ color: "var(--text-2)", fontSize: "14px", margin: "0 0 20px" }}>
+              Voulez-vous vraiment supprimer l'utilisateur <strong>{deleteConfirm.email}</strong> ?
+            </p>
+            <div className="admin__modal-actions">
+              <button
+                type="button"
+                className="admin__modal-btn admin__modal-btn--cancel"
+                onClick={() => setDeleteConfirm(null)}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="admin__modal-btn admin__modal-btn--danger"
+                onClick={confirmDeleteUser}
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════ MODAL ASSIGNATION ════════════════════ */}
+      {assignModal && (
+        <div className="admin__modal-overlay" onClick={() => setAssignModal(null)}>
+          <div className="admin__modal admin__modal--small" onClick={(e) => e.stopPropagation()}>
+            <h2 className="admin__modal-title">Assigner le ticket</h2>
+            <p style={{ color: "var(--text-2)", fontSize: "14px", margin: "0 0 16px" }}>
+              Choisissez un agent à assigner au ticket <strong>{assignModal}</strong> :
+            </p>
+            <div className="admin__assign-list">
+              {agentOptions.length === 0 ? (
+                <p style={{ color: "var(--text-3)", fontSize: "13px" }}>Aucun agent disponible</p>
+              ) : (
+                agentOptions.map(email => (
+                  <button
+                    key={email}
+                    className="admin__assign-option"
+                    onClick={() => handleAssignTicket(assignModal, email)}
+                  >
+                    <span>{email}</span>
+                    <span className="admin__assign-role">
+                      {users.find(u => u.email === email)?.role || "Agent"}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="admin__modal-actions" style={{ marginTop: "16px" }}>
+              <button
+                type="button"
+                className="admin__modal-btn admin__modal-btn--cancel"
+                onClick={() => setAssignModal(null)}
+              >
+                Annuler
+              </button>
+            </div>
           </div>
         </div>
       )}

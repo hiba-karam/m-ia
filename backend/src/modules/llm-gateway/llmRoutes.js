@@ -32,6 +32,30 @@ const getProviderByUseCase = (useCase) => {
     }
 };
 
+router.get('/sessions', verifyToken, async (req, res) => {
+    try {
+        const userId = req.user ? req.user.id : req.query.userId;
+
+        if (!userId) {
+            return res.status(400).json({ message : "L'identifiant de l'utilisateur est requis." });
+        }
+
+        const request = new sql.Request();
+        request.input('user_id', sql.Int, userId);
+
+        const result = await request.query(`
+            SELECT id, title, created_at, updated_at
+            FROM chat_sessions
+            WHERE user_id = @user_id
+            ORDER BY updated_at DESC
+        `);
+
+        res.status(200).json(result.recordset);
+    } catch (error) {
+        res.status(500).json({ message : "Erreur serveur." });
+    }
+});
+
 router.post('/sessions', verifyToken, async (req, res) => {
     try {
         const userId = req.user ? req.user.id : req.body.userId;

@@ -2,9 +2,15 @@ const { sql } = require('../config/db');
 const PRICING_PER_1K_TOKENS = require('../config/pricing');
 
 const tokenGuard = async (req, res, next) => {
-    const { userId, useCase, estimatedInputTokens, estimatedOutputTokens, provider } = req.body;
-    
-    const uId = userId || 1; 
+    const { useCase, estimatedInputTokens, estimatedOutputTokens, provider } = req.body;
+
+    // Sécurité: ignorer tout userId fourni par le client et ne faire confiance
+    // qu'à l'utilisateur authentifié par le JWT.
+    const uId = req.user?.id;
+    if (!uId) {
+        return res.status(401).json({ error: "Non authentifié." });
+    }
+
 
     try {
         const estimatedCost = calculateCost(estimatedInputTokens, estimatedOutputTokens, provider);
@@ -31,7 +37,8 @@ const tokenGuard = async (req, res, next) => {
                             : 50.0;
 
         if ((totalSpent + estimatedCost) >= budgetLimit) {
-            await logDecision(userId, useCase, provider, 'blocked', estimatedCost);
+            await logDecision(uId, useCase, provider, 'blocked', estimatedCost);
+
             return res.status(403).json({ action: 'BLOCK', reason: "Blocage automatique : Budget épuisé" });
         }
 
@@ -40,8 +47,9 @@ const tokenGuard = async (req, res, next) => {
         }
 
         if ((totalSpent + estimatedCost) >= (budgetLimit * 0.7)) {
-            console.warn(`[Token Guard] Alerte : Utilisateur ${userId} atteint 70% du budget.`);
+            console.warn(`[Token Guard] Alerte : Utilisateur ${uId} atteint 70% du budget.`);
         }
+
 
         next();
     } catch (err) {

@@ -2,6 +2,7 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth.jsx";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RequireAdmin from "./components/RequireAdmin";
 import Shell from "./components/Shell";
 import Login from "./pages/Login/Login";
 import Chat from "./pages/Chat/Chat";
@@ -25,8 +26,21 @@ export default function App() {
                   <Route path="chat" element={<Chat />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="tickets" element={<Tickets />} />
-                  <Route path="budget" element={<Budget />} />
-                  <Route path="admin" element={<Admin />} />
+                  <Route path="tickets-all" element={
+                    <RequireAdmin>
+                      <Tickets />
+                    </RequireAdmin>
+                  } />
+                  <Route path="budget" element={
+                    <RequireAdmin>
+                      <Budget />
+                    </RequireAdmin>
+                  } />
+                  <Route path="admin" element={
+                    <RequireAdmin>
+                      <Admin />
+                    </RequireAdmin>
+                  } />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Shell>

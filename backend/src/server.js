@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -28,19 +28,37 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/audit', auditRoutes);
 
 app.get('/api', (req, res) => {
-    res.json({ message: "Le backend M-IA est opérationnel !" });
+    res.json({ message: "Le backend M-IA est opÃ©rationnel !" });
 });
 
 async function checkDb() {
     try {
         await db.connectDB();
-        console.log("Connexion à la base de données SQL Server réussie !");
+        console.log("Connexion Ã  la base de donnÃ©es SQL Server rÃ©ussie !");
     } catch (err) {
-        console.error("Erreur de connexion à la base de données : ", err.message);
+        console.error("Erreur de connexion Ã  la base de donnÃ©es : ", err.message);
     }
 }
 checkDb();
 
 app.listen(port, () => {
-    console.log(`Serveur démarré avec succès sur http://localhost:${port}`);
+    console.log(`Serveur dÃ©marrÃ© avec succÃ¨s sur http://localhost:${port}`);
+});
+// Middleware d'erreur global (diagnostic automatique)
+app.use((err, req, res, next) => {
+    console.error('ERREUR:', err.stack || err.message || err);
+    const statusCode = err.statusCode || 500;
+    res.status(statusCode).json({
+        success: false,
+        error: err.message || 'Erreur interne du serveur',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
+});
+// Gestion des erreurs non capturees
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });

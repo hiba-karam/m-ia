@@ -10,22 +10,25 @@ import React, { createContext, useContext, useState, useCallback } from "react";
  */
 const AuthContext = createContext(null);
 
-const MOCK_USER = {
-  name: "S. Benali",
-  role: "Agent support",
-  service: "Support IT",
-};
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   const loginSso = useCallback(() => {
-    setUser(MOCK_USER);
+    setUser({
+      name: "S. Benali",
+      role: "Agent support",
+      service: "Support IT",
+    });
   }, []);
 
   const loginLocal = useCallback((credentials) => {
-    // TODO: POST /api/auth/login avec { username, password }
-    setUser({ ...MOCK_USER, name: credentials?.username || "admin.local", role: "Admin M-IA" });
+    const username = credentials?.username || "";
+    const isAdmin = username === "admin@mia.local";
+    setUser({
+      name: isAdmin ? "Admin M-IA" : username === "agent@mia.local" ? "Agent Support" : username,
+      role: isAdmin ? "Admin M-IA" : "Utilisateur",
+      service: isAdmin ? "DSI" : "Support IT",
+    });
   }, []);
 
   const logout = useCallback(() => {

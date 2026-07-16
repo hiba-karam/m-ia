@@ -672,3 +672,98 @@
     flex-direction: column;
   }
 }
+
+/* ── Empty state ── */
+.admin__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 8px;
+  color: var(--color-ink-soft);
+}
+
+.admin__empty h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.admin__empty p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-ink-soft);
+}
+
+/* ── Toast notification ── */
+.admin__toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #dcf3ec;
+  color: #1f8a70;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  animation: admin-toast-in 0.3s ease;
+}
+
+@keyframes admin-toast-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Assign list ── */
+.admin__assign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.admin__assign-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  text-align: left;
+}
+
+.admin__assign-option:hover {
+  background: var(--color-paper);
+  border-color: var(--color-brand-orange);
+}
+
+.admin__assign-role {
+  font-size: 11px;
+  color: var(--color-ink-faint);
+  font-weight: 500;
+}
+
+/* ── Danger button in modal ── */
+.admin__modal-btn--danger {
+  background: #d6524b;
+  color: #fff;
+}
+
+.admin__modal-btn--danger:hover {
+  background: #b8443a;
+}
+
+/* ── Small modal ── */
+.admin__modal--small {
+  max-width: 400px;
+}

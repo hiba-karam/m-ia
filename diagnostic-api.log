@@ -1,0 +1,153 @@
+﻿**********************
+Début de la transcription Windows PowerShell
+Heure de début : 20260716174949
+Nom d'utilisateur : DESKTOP-6FOKEMS\bekhich
+Utilisateur runAs :  DESKTOP-6FOKEMS\bekhich
+Nom de la configuration : 
+Ordinateur : DESKTOP-6FOKEMS (Microsoft Windows NT 10.0.26200.0)
+Application hôte : C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File diagnostic-api.ps1
+ID de processus : 19108
+PSVersion: 5.1.26100.8655
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8655
+BuildVersion: 10.0.26100.8655
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+1. VERIFICATION DES PROCESSUS...
+----------------------------------------
+Processus Node.js en cours :
+
+   Id ProcessName CPU (s) Mem (MB)
+   -- ----------- ------- --------
+ 6796 node            8,6     52,7
+15084 node            0,5     10,8
+
+Ports utilises :
+  Port 1433 (SQL Server) : Libre
+  Port 5000 (Backend (Express)) : Libre
+  Port 5173 (Frontend (Vite)) : Utilise
+
+2. VERIFICATION DU FICHIER .ENV...
+----------------------------------------
+  Fichier .env trouve : C:\Users\bekhich\Downloads\m-ia\m-ia\backend\.env
+  Variables definies :
+    - PORT
+    - NODE_ENV
+    - DB_USER
+    - DB_PASSWORD
+    - DB_SERVER
+    - DB_NAME
+    - DB_ENCRYPT
+    - DB_TRUST_CERT
+    - JWT_SECRET
+    - JWT_EXPIRES_IN
+    - REFRESH_EXPIRES_DAYS
+    - AUTH_MODE
+    - LOCAL_LOGIN_ENABLED
+    - MFA_REQUIRED_ADMIN
+    - DEFAULT_ROLE_NAME
+
+3. VERIFICATION DE LA BASE DE DONNEES (SQL Server)...
+----------------------------------------
+  Service SQL Server detecte : SQL Server (MSSQLSERVER01) SQL Server (SQLEXPRESS) SQL Full-text Filter Daemon Launcher (MSSQLSERVER) SQL Server Launchpad (MSSQLSERVER) SQL Server (MSSQLSERVER)
+  SQL Server est en cours d'execution
+
+4. VERIFICATION DES DEPENDANCES...
+----------------------------------------
+  Backend : node_modules trouve
+  Verification des dependances critiques...
+    - express : OK
+    - cors : OK
+    - dotenv : OK
+    - mssql : OK
+
+  Frontend : node_modules trouve
+
+5. TEST DES ENDPOINTS API...
+----------------------------------------
+PS>Erreur de terminaison (Invoke-WebRequest) : « Impossible de se connecter au serveur distant »
+  Backend non detecte. Demarrage...
+  Attente du demarrage du backend (10 secondes)...
+Avertissement de sécurité : risque d’exécution de script
+Invoke-WebRequest analyse le contenu de la page web. Il se peut que le code de script de la page web s’exécute lors de l’analyse de la page.
+      ACTION RECOMMANDÉE :
+      Utilisez le commutateur -UseBasicParsing pour éviter l’exécution du code de script.
+
+      Voulez-vous continuer ?
+&Oui  Oui pour &tout  &Non  Non pour to&ut  &Suspendre
+O
+  Backend demarre avec succes !
+
+Avertissement de sécurité : risque d’exécution de script
+Invoke-WebRequest analyse le contenu de la page web. Il se peut que le code de script de la page web s’exécute lors de l’analyse de la page.
+      ACTION RECOMMANDÉE :
+      Utilisez le commutateur -UseBasicParsing pour éviter l’exécution du code de script.
+
+      Voulez-vous continuer ?
+&Oui  Oui pour &tout  &Non  Non pour to&ut  &Suspendre
+O
+  /api - OK (HTTP 200)
+PS>Erreur de terminaison (Invoke-WebRequest) : « {"message":"Accès refusé. Token manquant."} »
+  /api/token/usage - ERREUR (HTTP 403)
+    Details :
+PS>Erreur de terminaison (Invoke-WebRequest) : « {"message":"Accès refusé. Token manquant."} »
+  /api/llm/sessions - ERREUR (HTTP 403)
+    Details :
+PS>Erreur de terminaison (Invoke-WebRequest) : « {"message":"Accès refusé. Token manquant."} »
+  /api/admin/providers - ERREUR (HTTP 403)
+    Details :
+PS>Erreur de terminaison (Invoke-WebRequest) : « {"message":"Accès refusé. Token manquant."} »
+  /api/tickets - ERREUR (HTTP 403)
+    Details :
+PS>Erreur de terminaison (Invoke-WebRequest) : « Cannot GET /api/auth »
+  /api/auth - ERREUR (HTTP 404)
+    Details :
+
+6. CORRECTIONS AUTOMATIQUES...
+----------------------------------------
+  Ajout du middleware d'erreur global...
+  Ajout de la gestion des exceptions globales...
+  Fichier server.js mis a jour avec les correctifs.
+
+7. VERIFICATION DES FICHIERS DE ROUTES...
+----------------------------------------
+  auth\authRoutes.js : Present
+  token-guard\tokenRoutes.js : Present
+  admin\adminRoutes.js : Present
+  tickets\ticketRoutes.js : Present
+  llm-gateway\llmRoutes.js : Present
+
+8. REDEMARRAGE DES SERVICES...
+----------------------------------------
+  Arret des processus Node.js existants...
+  Demarrage du backend (http://localhost:5000)...
+  Backend demarre (PID: 1888)
+  Demarrage du frontend (http://localhost:5173)...
+PS>Erreur de terminaison (Start-Process) : « Impossible d’exécuter cette commande en raison de l’erreur : %1 n’est pas une application Win32 valide. »
+Start-Process : Impossible d’exécuter cette commande en raison de l’erreur : %1 n’est pas une application Win32 valide.
+Au caractère C:\Users\bekhich\Downloads\m-ia\m-ia\diagnostic-api.ps1:359 : 17
++ ... ntendProc = Start-Process -FilePath "npx" -ArgumentList "vite" -PassT ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation : (:) [Start-Process], InvalidOperationException
+    + FullyQualifiedErrorId : InvalidOperationException,Microsoft.PowerShell.Commands.StartProcessCommand
+Start-Process : Impossible d’exécuter cette commande en raison de l’erreur : %1 n’est pas une application Win32 valide.
+Au caractère C:\Users\bekhich\Downloads\m-ia\m-ia\diagnostic-api.ps1:359 : 17
++ ... ntendProc = Start-Process -FilePath "npx" -ArgumentList "vite" -PassT ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation : (:) [Start-Process], InvalidOperationException
+    + FullyQualifiedErrorId : InvalidOperationException,Microsoft.PowerShell.Commands.StartProcessCommand
+
+  Frontend demarre (PID: )
+
+==================================================
+              VERIFICATION FINALE
+==================================================
+
+  Frontend : http://localhost:5173
+  Backend  : http://localhost:5000
+  API Root : http://localhost:5000/api
+
+  Tests rapides des endpoints :

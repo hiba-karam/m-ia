@@ -3,13 +3,21 @@
    ════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Couleurs de marque ── */
-  --orange: #f2643c;
-  --orange-hover: #d9502b;
+  /* ── Couleurs de marque (M-AUTOMOTIV — OFFICIEL) ── */
+  --color-brand-purple: #2b0f52;
+  --color-brand-orange: #f2643c;
+  --color-brand-orange-hover: #d9502b;
+
+  /* ── Alias internes (compat existant) ── */
+  --orange: var(--color-brand-orange);
+  --orange-hover: var(--color-brand-orange-hover);
+
   --orange-soft: rgba(242, 100, 60, 0.12);
 
   /* ── Sidebar (violet plein, sans transparence) ── */
-  --sidebar: #2b0f52;
+  --sidebar: var(--color-brand-purple);
+  --sidebar-active: #391566;
+
 
   /* ── Surfaces claires ── */
   --color-paper: #f7f7fb;
@@ -30,11 +38,14 @@
   /* ── Accent inverse (rare) ── */
   --text-inverse: #ffffff;
 
+
   /* ── Accents fonctionnels ── */
-  --blue: #2563eb;
+  --blue: var(--color-brand-purple);
+
   --blue-soft: rgba(37, 99, 235, 0.12);
 
-  --amber: #e8a33d;
+  --amber: var(--color-brand-orange);
+
   --amber-soft: rgba(232, 163, 61, 0.14);
 
   --teal: #0f766e;
@@ -264,6 +275,7 @@ samp,
   background: linear-gradient(135deg, var(--orange), var(--orange-hover));
   color: #fff;
   box-shadow: 0 14px 30px rgba(242, 100, 60, 0.18);
+
 }
 
 .btn--primary:hover:not(:disabled) {
@@ -349,7 +361,7 @@ samp,
   text-align: left;
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
-  background: rgba(13, 10, 31, 0.03);
+  background: transparent;
 }
 
 .table tbody td {
