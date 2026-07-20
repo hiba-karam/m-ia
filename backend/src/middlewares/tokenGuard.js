@@ -1,6 +1,8 @@
 const { sql } = require('../config/db');
 const PRICING_PER_1K_TOKENS = require('../config/pricing');
 
+const ALLOWED_PROVIDERS = ['ChatGPT', 'Claude', 'Gemini', 'DeepSeek', 'Kimi', 'auto'];
+
 const tokenGuard = async (req, res, next) => {
     const { useCase, estimatedInputTokens, estimatedOutputTokens, provider } = req.body;
 
@@ -8,7 +10,18 @@ const tokenGuard = async (req, res, next) => {
     // qu'à l'utilisateur authentifié par le JWT.
     const uId = req.user?.id;
     if (!uId) {
-        return res.status(401).json({ error: "Non authentifié." });
+        return res.status(401).json({ message: "Non authentifié." });
+    }
+
+    // Validation / Assainissement
+    if (estimatedInputTokens != null && (isNaN(estimatedInputTokens) || estimatedInputTokens < 0)) {
+        return res.status(400).json({ message: "Le nombre estimé de tokens en entrée est invalide." });
+    }
+    if (estimatedOutputTokens != null && (isNaN(estimatedOutputTokens) || estimatedOutputTokens < 0)) {
+        return res.status(400).json({ message: "Le nombre estimé de tokens en sortie est invalide." });
+    }
+    if (provider && !ALLOWED_PROVIDERS.includes(provider)) {
+        return res.status(400).json({ message: "Fournisseur IA non reconnu." });
     }
 
 
@@ -53,8 +66,8 @@ const tokenGuard = async (req, res, next) => {
 
         next();
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Erreur de gouvernance Token Guard." });
+        console.error("Erreur SQL dans le Token Guard :", err);
+        res.status(500).json({ message: "Erreur de gouvernance Token Guard." });
     }
 };
 

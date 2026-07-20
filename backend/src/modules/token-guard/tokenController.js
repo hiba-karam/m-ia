@@ -1,6 +1,8 @@
 const { sql } = require('../../config/db');
 const PRICING_PER_1K_TOKENS = require('../../config/pricing');
 
+const ALLOWED_PROVIDERS = ['ChatGPT', 'Claude', 'Gemini', 'DeepSeek', 'Kimi', 'auto'];
+
 const checkQuota = async (req, res) => {
     try {
         const { service, useCase, provider, estimatedInputTokens, estimatedOutputTokens } = req.body;
@@ -10,6 +12,17 @@ const checkQuota = async (req, res) => {
         const uId = req.user?.id;
         if (!uId) {
             return res.status(401).json({ message: 'Non authentifié.' });
+        }
+
+        // Validation / Assainissement
+        if (estimatedInputTokens != null && (isNaN(estimatedInputTokens) || estimatedInputTokens < 0)) {
+            return res.status(400).json({ message: "Le nombre estimé de tokens en entrée est invalide." });
+        }
+        if (estimatedOutputTokens != null && (isNaN(estimatedOutputTokens) || estimatedOutputTokens < 0)) {
+            return res.status(400).json({ message: "Le nombre estimé de tokens en sortie est invalide." });
+        }
+        if (provider && !ALLOWED_PROVIDERS.includes(provider)) {
+            return res.status(400).json({ message: "Fournisseur IA non reconnu." });
         }
 
         const rates = PRICING_PER_1K_TOKENS[provider] || PRICING_PER_1K_TOKENS['ChatGPT'];
@@ -73,7 +86,10 @@ const checkQuota = async (req, res) => {
 
 const getUsage = async (req, res) => {
     try {
-        const userId = req.user ? req.user.id : req.query.userId || 1;
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'Non authentifié.' });
+        }
 
         const request = new sql.Request();
         request.input('user_id', sql.Int, userId);
